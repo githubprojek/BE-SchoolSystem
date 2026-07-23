@@ -28,8 +28,8 @@ export const absensiService = {
     if (!absensi) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, 'ID not found');
     }
-    if (data.muridId && data.jadwal && data.tanggal) {
-      const existing = await absensiRepo.findConflict(data.muridId, data.jadwal, data.tanggal);
+    if (data.muridId && data.jadwalId && data.tanggal) {
+      const existing = await absensiRepo.findConflict(data.muridId, data.jadwalId, data.tanggal);
       if (existing && existing.id !== id) {
         throw new AppError(409, ErrorCodes.CONFLICT, 'Conflict: cannot have absen twice');
       }

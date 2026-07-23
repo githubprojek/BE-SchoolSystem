@@ -88,6 +88,7 @@ describe('Kelas tests', { concurrency: false }, () => {
 
   describe('UpdateById', () => {
     it('Update kelas successfully', async () => {
+      mock.method(kelasRepo, 'findById', async () => mockKelas);
       mock.method(kelasRepo, 'findByNamaAndTingkat', async () => null);
 
       mock.method(kelasRepo, 'updateById', async () => ({
@@ -116,6 +117,7 @@ describe('Kelas tests', { concurrency: false }, () => {
 
   describe('DeleteById', async () => {
     it('Delete user successfully', async () => {
+      mock.method(kelasRepo, 'findById', async () => ({ id: kelasId }));
       mock.method(kelasRepo, 'deleteById', async () => ({ id: kelasId }));
       await assert.doesNotReject(() => kelasService.deleteById(kelasId));
     });

@@ -1,12 +1,13 @@
 import { prisma } from '../db/client.js';
+import { invalidateCache, getOrSet } from '../cache/helper.js';
 
 export const kelasRepo = {
-  async create(data) {
-    return prisma.kelas.create({ data });
-  },
-
   async findAll() {
-    return prisma.kelas.findMany({ include: { waliKelas: true } });
+    return await getOrSet(
+      'kelas:all',
+      () => prisma.kelas.findMany({ include: { waliKelas: true } }),
+      600,
+    );
   },
 
   async findByNamaAndTingkat(nama, tingkat) {
@@ -14,14 +15,27 @@ export const kelasRepo = {
   },
 
   async findById(id) {
-    return prisma.kelas.findUnique({ where: { id }, include: { waliKelas: true } });
+    return await getOrSet(
+      `kelas:${id}`,
+      () => prisma.kelas.findUnique({ where: { id }, include: { waliKelas: true } }),
+      600,
+    );
+  },
+
+  async create(data) {
+    const result = await prisma.kelas.create({ data });
+    await invalidateCache('kelas:all');
+    return result;
   },
 
   async updateById(id, data) {
-    return prisma.kelas.update({ where: { id }, data, include: { waliKelas: true } });
+    const result = await prisma.kelas.update({ where: { id }, data, include: { waliKelas: true } });
+    await Promise.all([invalidateCache(`kelas:${id}`), invalidateCache('kelas:all')]);
+    return result;
   },
 
   async deleteById(id) {
-    return prisma.kelas.delete({ where: { id } });
+    await prisma.kelas.delete({ where: { id } });
+    await Promise.all([invalidateCache(`kelas:${id}`), invalidateCache('kelas:all')]);
   },
 };

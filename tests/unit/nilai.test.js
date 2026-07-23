@@ -91,7 +91,7 @@ describe('Nilai test', { concurrency: false }, () => {
     });
 
     it('Return 404 when nilaiId not found', async () => {
-      mock.method(nilaiRepo, 'updateById', async () => null);
+      mock.method(nilaiRepo, 'findById', async () => null);
 
       await assert.rejects(
         () => nilaiService.updateById('nonExist', { nilai: 20 }),
@@ -113,7 +113,7 @@ describe('Nilai test', { concurrency: false }, () => {
     });
 
     it('Return 404 when IDs nilai not found', async () => {
-      mock.method(nilaiRepo, 'deleteById', async () => null);
+      mock.method(nilaiRepo, 'findById', async () => null);
       await assert.rejects(
         () => nilaiService.deleteById('nonExist'),
         (err) => {

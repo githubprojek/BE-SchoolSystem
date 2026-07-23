@@ -112,6 +112,7 @@ describe('Jadwal tests', { concurrency: false }, () => {
     });
 
     it('Throws 404 when ids jadwal not found', async () => {
+      mock.method(jadwalRepo, 'findById', async () => null);
       mock.method(jadwalRepo, 'findOverlap', async () => null);
       mock.method(jadwalRepo, 'updateById', async () => null);
       await assert.rejects(
@@ -127,13 +128,14 @@ describe('Jadwal tests', { concurrency: false }, () => {
   });
 
   describe('deleteById', async () => {
-    it('Delete user successfully', async () => {
+    it('Delete jadwal successfully', async () => {
+      mock.method(jadwalRepo, 'findById', async () => mockJadwal);
       mock.method(jadwalRepo, 'deleteById', async () => ({ id: kelasId }));
       await assert.doesNotReject(jadwalService.deleteById(jadwalId));
     });
 
     it('Throws 404 when id not found', async () => {
-      mock.method(jadwalRepo, 'deleteById', async () => null);
+      mock.method(jadwalRepo, 'findById', async () => null);
       await assert.rejects(
         () => jadwalService.deleteById('nonExist'),
         (err) => {

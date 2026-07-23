@@ -66,12 +66,12 @@ export const userService = {
   async login({ email, password }) {
     const user = await userRepo.findByEmail(email);
     if (!user) {
-      throw new AppError(401, ErrorCodes.UNAUTHORIZED, 'Invalid email or password');
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid email or password');
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      throw new AppError(401, ErrorCodes.UNAUTHORIZED, 'Invalid email or password');
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid email or password');
     }
 
     const token = jwt.sign(

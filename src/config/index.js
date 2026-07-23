@@ -21,7 +21,7 @@ export const config = Object.freeze({
     max: env.RATE_LIMIT_MAX,
   },
   redis: {
-    url: env.UPSTASH_REDIS_REST_TOKEN,
+    url: env.UPSTASH_REDIS_REST_URL,
     token: env.UPSTASH_REDIS_REST_TOKEN,
   },
 });

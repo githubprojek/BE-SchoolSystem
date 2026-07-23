@@ -1,27 +1,33 @@
 import { prisma } from '../db/client.js';
+import { invalidateCache, getOrSet } from '../cache/helper.js';
 
 export const mapelRepo = {
-  async create(data) {
-    return prisma.mapel.create({ data });
-  },
-
   async findAll() {
-    return prisma.mapel.findMany();
+    return await getOrSet('mapel:all', () => prisma.mapel.findMany(), 600);
   },
 
   async findById(id) {
-    return prisma.mapel.findUnique({ where: { id } });
+    return await getOrSet(`mapel:${id}`, () => prisma.mapel.findUnique({ where: { id } }), 600);
   },
 
   async findByKode(kode) {
     return prisma.mapel.findUnique({ where: { kode } });
   },
 
+  async create(data) {
+    const result = await prisma.mapel.create({ data });
+    await invalidateCache('mapel:repo');
+    return result;
+  },
+
   async updateById(id, data) {
-    return prisma.mapel.update({ where: { id }, data });
+    const result = await prisma.mapel.update({ where: { id }, data });
+    await Promise.all([invalidateCache(`mapel:${id}`), invalidateCache('mapel:all')]);
+    return result;
   },
 
   async deleteById(id) {
-    return prisma.mapel.delete({ where: { id } });
+    await prisma.mapel.delete({ where: { id } });
+    await Promise.all([invalidateCache(`mapel:${id}`), invalidateCache('mapel:all')]);
   },
 };

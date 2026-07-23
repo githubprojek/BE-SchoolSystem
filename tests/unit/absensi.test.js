@@ -13,17 +13,17 @@ describe('Absensi test', { concurrency: false }, () => {
 
   const mockAbsensi = {
     _id: absensiId,
-    guru: guruId,
-    murid: muridId,
-    jadwal: jadwalId,
+    guruId: guruId,
+    muridId: muridId,
+    jadwalId: jadwalId,
     tanggal: '2026-07-25',
     status: 'hadir',
   };
   const inputAbsensi = {
     _id: absensiId,
-    guru: guruId,
-    murid: muridId,
-    jadwal: jadwalId,
+    guruId: guruId,
+    muridId: muridId,
+    jadwalId: jadwalId,
     tanggal: '2026-07-25',
     status: 'hadir',
   };
@@ -37,9 +37,9 @@ describe('Absensi test', { concurrency: false }, () => {
       mock.method(absensiRepo, 'findConflict', async () => null);
       mock.method(absensiRepo, 'create', async () => mockAbsensi);
       const result = await absensiService.create(inputAbsensi);
-      assert.equal(result.guru, guruId);
-      assert.equal(result.murid, muridId);
-      assert.equal(result.jadwal, jadwalId);
+      assert.equal(result.guruId, guruId);
+      assert.equal(result.muridId, muridId);
+      assert.equal(result.jadwalId, jadwalId);
     });
 
     it('Return 409 when Absensi CONFLICT', async () => {
@@ -61,8 +61,8 @@ describe('Absensi test', { concurrency: false }, () => {
       mock.method(absensiRepo, 'findAll', async () => [mockAbsensi]);
       const result = await absensiService.findAll();
       assert.equal(result.length, 1);
-      assert.equal(result[0].murid, muridId);
-      assert.equal(result[0].jadwal, jadwalId);
+      assert.equal(result[0].muridId, muridId);
+      assert.equal(result[0].jadwalId, jadwalId);
     });
   });
 
@@ -71,9 +71,9 @@ describe('Absensi test', { concurrency: false }, () => {
       mock.method(absensiRepo, 'findById', async () => mockAbsensi);
       const result = await absensiService.findById(mockAbsensi);
       assert.equal(result._id, absensiId);
-      assert.equal(result.guru, guruId);
-      assert.equal(result.murid, muridId);
-      assert.equal(result.jadwal, jadwalId);
+      assert.equal(result.guruId, guruId);
+      assert.equal(result.muridId, muridId);
+      assert.equal(result.jadwalId, jadwalId);
     });
 
     it('Return 404 when ID not found', async () => {
@@ -92,6 +92,7 @@ describe('Absensi test', { concurrency: false }, () => {
 
   describe('updateById', async () => {
     it('Update absensi successfully', async () => {
+      mock.method(absensiRepo, 'findById', async () => mockAbsensi);
       mock.method(absensiRepo, 'findConflict', async () => null);
       mock.method(absensiRepo, 'updateById', async () => ({ ...mockAbsensi, status: 'sakit' }));
 
@@ -101,9 +102,17 @@ describe('Absensi test', { concurrency: false }, () => {
     });
 
     it('return 409 when Absensi Conflict', async () => {
+      mock.method(absensiRepo, 'findById', async () => mockAbsensi);
       mock.method(absensiRepo, 'findConflict', async () => mockAbsensi);
+
       await assert.rejects(
-        () => absensiService.updateById(inputAbsensi, { status: 'sakit' }),
+        () =>
+          absensiService.updateById(absensiId, {
+            status: 'sakit',
+            muridId: muridId,
+            jadwalId: jadwalId,
+            tanggal: '2026-07-25',
+          }),
         (err) => {
           assert(err instanceof AppError);
           assert.equal(err.statusCode, 409);
@@ -114,6 +123,7 @@ describe('Absensi test', { concurrency: false }, () => {
     });
 
     it('Return 404 when ID not found', async () => {
+      mock.method(absensiRepo, 'findById', async () => null);
       mock.method(absensiRepo, 'findConflict', async () => null);
       mock.method(absensiRepo, 'updateById', async () => null);
       await assert.rejects(
@@ -129,13 +139,15 @@ describe('Absensi test', { concurrency: false }, () => {
   });
 
   describe('deleteById', async () => {
-    it('Delete nilai successfully', async () => {
+    it('Delete absensi successfully', async () => {
+      mock.method(absensiRepo, 'findById', async () => mockAbsensi);
       mock.method(absensiRepo, 'deleteById', async () => mockAbsensi);
 
       await assert.doesNotReject(absensiService.deleteById(mockAbsensi._id));
     });
 
     it('Return 404 when IDs nilai not found', async () => {
+      mock.method(absensiRepo, 'findById', async () => null);
       mock.method(absensiRepo, 'deleteById', async () => null);
       await assert.rejects(
         () => absensiService.deleteById('nonExist'),

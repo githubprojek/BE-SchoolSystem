@@ -1,23 +1,35 @@
+import { getOrSet, invalidateCache } from '../cache/helper.js';
 import { prisma } from '../db/client.js';
 
 const include = { guru: true, murid: true, mataPelajaran: true };
 
 export const nilaiRepo = {
-  async create(data) {
-    return prisma.nilai.create({ data });
-  },
   async findAll() {
-    return prisma.nilai.findMany({ include });
+    return await getOrSet('nilai:all', () => prisma.nilai.findMany({ include }), 600);
   },
+
   async findById(id) {
-    return prisma.nilai.findUnique({ where: { id }, include });
+    return await getOrSet(
+      `nilai:${id}`,
+      () => prisma.nilai.findUnique({ where: { id }, include }),
+      600,
+    );
+  },
+
+  async create(data) {
+    const result = await prisma.nilai.create({ data });
+    await invalidateCache('nilai:all');
+    return result;
   },
 
   async updateById(id, data) {
-    return prisma.nilai.update({ where: { id }, data, include });
+    const result = await prisma.nilai.update({ where: { id }, data, include });
+    await Promise.all([invalidateCache(`nilai:${id}`), invalidateCache('kelas:all')]);
+    return result;
   },
 
   async deleteById(id) {
-    return prisma.nilai.delete({ where: { id } });
+    await prisma.nilai.delete({ where: { id } });
+    await Promise.all([invalidateCache(`nilai:${id}`), invalidateCache('kelas:all')]);
   },
 };

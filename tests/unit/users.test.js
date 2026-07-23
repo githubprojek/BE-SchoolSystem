@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { userRepo } from '../../src/repositories/users.repo.js';
 import { userService } from '../../src/services/users.service.js';
@@ -18,7 +18,7 @@ describe('User tests', { concurrency: false }, () => {
     email: 'budi@test.com',
     role: 'guru',
     nip: 12345,
-    mataPelajaran: mapelId,
+    mataPelajaranId: mapelId,
   };
 
   const guruInput = {
@@ -27,7 +27,7 @@ describe('User tests', { concurrency: false }, () => {
     password: 'password123',
     role: 'guru',
     nip: 12345,
-    mataPelajaran: mapelId,
+    mataPelajaranId: mapelId,
   };
 
   beforeEach(() => {
@@ -60,7 +60,7 @@ describe('User tests', { concurrency: false }, () => {
         password: 'password123',
         role: 'murid',
         nis: 67890,
-        kelas: '507f1f77bcf86cd799439013',
+        kelasId: '507f1f77bcf86cd799439013',
       };
 
       const mockMurid = {
@@ -69,7 +69,7 @@ describe('User tests', { concurrency: false }, () => {
         email: 'siti@test.com',
         role: 'murid',
         nis: 67890,
-        kelas: '507f1f77bcf86cd799439013',
+        kelasId: '507f1f77bcf86cd799439013',
       };
 
       mock.method(userRepo, 'findByEmail', async () => null);
@@ -119,7 +119,7 @@ describe('User tests', { concurrency: false }, () => {
       mock.method(bcrypt, 'hash', async () => 'hashed');
 
       await assert.rejects(
-        () => userService.register({ ...guruInput, mataPelajaran: undefined }),
+        () => userService.register({ ...guruInput, mataPelajaranId: undefined }),
         (err) => {
           assert.equal(err.statusCode, 400);
           assert.equal(err.code, 'VALIDATION_ERROR');
@@ -142,7 +142,7 @@ describe('User tests', { concurrency: false }, () => {
             nis: undefined,
             kelas: '507f1f77bcf86cd799439013',
             nip: undefined,
-            mataPelajaran: undefined,
+            mataPelajaranId: undefined,
           }),
         (err) => {
           assert.equal(err.statusCode, 400);
@@ -166,7 +166,7 @@ describe('User tests', { concurrency: false }, () => {
             nis: 12345,
             kelas: undefined,
             nip: undefined,
-            mataPelajaran: undefined,
+            mataPelajaranId: undefined,
           }),
         (err) => {
           assert.equal(err.statusCode, 400);
@@ -203,8 +203,8 @@ describe('User tests', { concurrency: false }, () => {
       await assert.rejects(
         () => userService.login({ email: 'unknown@test.com', password: 'password123' }),
         (err) => {
-          assert.equal(err.statusCode, 401);
-          assert.equal(err.code, 'UNAUTHORIZED');
+          assert.equal(err.statusCode, 400);
+          assert.equal(err.code, 'VALIDATION_ERROR');
           return true;
         },
       );
@@ -217,8 +217,8 @@ describe('User tests', { concurrency: false }, () => {
       await assert.rejects(
         () => userService.login({ email: 'budi@test.com', password: 'wrongpassword' }),
         (err) => {
-          assert.equal(err.statusCode, 401);
-          assert.equal(err.code, 'UNAUTHORIZED');
+          assert.equal(err.statusCode, 400);
+          assert.equal(err.code, 'VALIDATION_ERROR');
           return true;
         },
       );
@@ -271,6 +271,7 @@ describe('User tests', { concurrency: false }, () => {
     };
 
     it('updates user successfully', async () => {
+      mock.method(userRepo, 'findById', async () => existingUser);
       mock.method(userRepo, 'findByEmail', async () => null);
       mock.method(userRepo, 'updateById', async () => ({ ...existingUser, nama: 'Budi Updated' }));
 
@@ -280,6 +281,7 @@ describe('User tests', { concurrency: false }, () => {
     });
 
     it('re-hashes password when password is provided', async () => {
+      mock.method(userRepo, 'findById', async () => existingUser);
       mock.method(bcrypt, 'hash', async () => 'new-hashed-password');
       mock.method(userRepo, 'findByEmail', async () => null);
       mock.method(userRepo, 'updateById', async () => ({
@@ -294,6 +296,7 @@ describe('User tests', { concurrency: false }, () => {
     });
 
     it('throws 409 when email is taken by another user', async () => {
+      mock.method(userRepo, 'findById', async () => existingUser);
       mock.method(userRepo, 'findByEmail', async () => ({
         id: 'other-id',
         email: 'other@test.com',
@@ -310,6 +313,7 @@ describe('User tests', { concurrency: false }, () => {
     });
 
     it('allows updating to own email', async () => {
+      mock.method(userRepo, 'findById', async () => existingUser);
       mock.method(userRepo, 'findByEmail', async () => ({
         id: guruId,
         email: 'budi@test.com',
@@ -341,6 +345,7 @@ describe('User tests', { concurrency: false }, () => {
 
   describe('deleteById', () => {
     it('deletes user successfully', async () => {
+      mock.method(userRepo, 'findById', async () => ({ id: guruId }));
       mock.method(userRepo, 'deleteById', async () => ({ id: guruId }));
 
       await assert.doesNotReject(() => userService.deleteById(guruId));

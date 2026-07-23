@@ -80,6 +80,7 @@ describe('mataPelajaran test', { concurrency: false }, () => {
 
   describe('updateById', async () => {
     it('Update mataPelajaran successully', async () => {
+      mock.method(mapelRepo, 'findById', async () => mockMapel);
       mock.method(mapelRepo, 'findByKode', async () => null);
       mock.method(mapelRepo, 'updateById', async () => ({
         ...mockMapel,
@@ -107,6 +108,7 @@ describe('mataPelajaran test', { concurrency: false }, () => {
     });
 
     it('Throw 409 when a kode already existing', async () => {
+      mock.method(mapelRepo, 'findById', async () => mockMapel);
       mock.method(mapelRepo, 'findByKode', async () => mockMapel);
 
       await assert.rejects(
@@ -123,6 +125,7 @@ describe('mataPelajaran test', { concurrency: false }, () => {
 
   describe('deleteById', async () => {
     it('Delete mataPelajaran successfully', async () => {
+      mock.method(mapelRepo, 'findById', async () => ({ id: mapelId }));
       mock.method(mapelRepo, 'deleteById', async () => ({ id: mapelId }));
 
       await assert.doesNotReject(mapelService.deleteById(mapelId));
