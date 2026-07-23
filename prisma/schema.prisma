@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  password        String
+  nama            String
+  role            String
+  nis             Int?
+  nip             Int?
+  kelasId         String?
+  mataPelajaranId String?
+
+  kelas         Kelas?   @relation("UserKelas", fields: [kelasId], references: [id])
+  mataPelajaran Mapel?   @relation(fields: [mataPelajaranId], references: [id])
+  kelasWali     Kelas[]  @relation("KelasWali")
+  jadwalGuru    Jadwal[] @relation("JadwalGuru")
+  jadwalMurid   Jadwal[] @relation("JadwalMurid")
+  nilaiMurid    Nilai[]  @relation("NilaiMurid")
+  nilaiGuru     Nilai[]  @relation("NilaiGuru")
+  absensiGuru   Absensi[] @relation("AbsensiGuru")
+  absensiMurid  Absensi[] @relation("AbsensiMurid")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Kelas {
+  id          String  @id @default(uuid())
+  nama        String
+  tingkat     Int
+  waliKelasId String?
+
+  waliKelas User?   @relation("KelasWali", fields: [waliKelasId], references: [id])
+  users     User[]  @relation("UserKelas")
+  jadwals   Jadwal[]
+
+  @@unique([nama, tingkat])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Mapel {
+  id        String  @id @default(uuid())
+  nama      String
+  kode      String  @unique
+
+  users   User[]
+  jadwals Jadwal[]
+  nilais  Nilai[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Jadwal {
+  id              String @id @default(uuid())
+  guruId          String
+  mataPelajaranId String?
+  muridId         String?
+  kelasId         String?
+  hari            String
+  jamMulai        Int
+  jamSelesai      Int
+
+  guru          User     @relation("JadwalGuru", fields: [guruId], references: [id])
+  mataPelajaran Mapel?   @relation(fields: [mataPelajaranId], references: [id])
+  murid         User?    @relation("JadwalMurid", fields: [muridId], references: [id])
+  kelas         Kelas?   @relation(fields: [kelasId], references: [id])
+  absensis      Absensi[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Nilai {
+  id              String @id @default(uuid())
+  muridId         String
+  guruId          String
+  mataPelajaranId String
+  nilai           Float
+  tipe            String
+  semester        Int
+  tahunAjaran     String
+
+  murid         User  @relation("NilaiDiterima", fields: [muridId], references: [id])
+  guru          User  @relation("NilaiDiberikan", fields: [guruId], references: [id])
+  mataPelajaran Mapel @relation(fields: [mataPelajaranId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Absensi {
+  id       String   @id @default(uuid())
+  guruId   String
+  muridId  String
+  jadwalId String
+  tanggal  DateTime
+  status   String
+
+  guru   User   @relation("AbsensiGuru", fields: [guruId], references: [id])
+  murid  User   @relation("AbsensiMurid", fields: [muridId], references: [id])
+  jadwal Jadwal @relation(fields: [jadwalId], references: [id])
+
+  @@unique([muridId, jadwalId, tanggal])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
