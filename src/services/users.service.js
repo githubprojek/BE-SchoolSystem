@@ -75,7 +75,7 @@ export const userService = {
     }
 
     const token = jwt.sign(
-      { sub: user.id, role: user.role, kelas: user.kelas },
+      { sub: user.id, role: user.role, kelasId: user.kelasId },
       config.jwt.secret,
       {
         expiresIn: config.jwt.expiresIn,
@@ -83,7 +83,13 @@ export const userService = {
     );
 
     return {
-      user: { id: user.id, nama: user.nama, email: user.email, role: user.role, kelas: user.kelas },
+      user: {
+        id: user.id,
+        nama: user.nama,
+        email: user.email,
+        role: user.role,
+        kelasId: user.kelasId,
+      },
       token,
     };
   },

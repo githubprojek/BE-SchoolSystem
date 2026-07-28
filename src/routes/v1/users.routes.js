@@ -8,18 +8,24 @@ const router = Router();
 
 router.post('/register', asyncHandler(usersController.register));
 router.post('/login', asyncHandler(usersController.login));
+router.get('/me', authenticate, asyncHandler(usersController.getProfile));
+router.patch('/me', authenticate, asyncHandler(usersController.updateProfile));
 router.get(
   '/users',
   authenticate,
   authorize('admin', 'guru'),
   asyncHandler(usersController.findAll),
 );
-router.get('/me', authenticate, asyncHandler(usersController.getProfile));
-router.patch('/me', authenticate, asyncHandler(usersController.updateProfile));
-router.delete(
-  '/me',
+router.patch(
+  '/users/:id',
   authenticate,
-  authorize('admin', 'guru'),
+  authorize('admin'),
+  asyncHandler(usersController.updateUsers),
+);
+router.delete(
+  '/users/:id',
+  authenticate,
+  authorize('admin'),
   asyncHandler(usersController.deleteProfile),
 );
 

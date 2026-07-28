@@ -23,8 +23,8 @@ model User {
   kelasWali     Kelas[]  @relation("KelasWali")
   jadwalGuru    Jadwal[] @relation("JadwalGuru")
   jadwalMurid   Jadwal[] @relation("JadwalMurid")
-  nilaiMurid    Nilai[]  @relation("NilaiMurid")
-  nilaiGuru     Nilai[]  @relation("NilaiGuru")
+  nilaiMurid    Nilai[]  @relation("NilaiDiterima")
+  nilaiGuru     Nilai[]  @relation("NilaiDiberikan")
   absensiGuru   Absensi[] @relation("AbsensiGuru")
   absensiMurid  Absensi[] @relation("AbsensiMurid")
 

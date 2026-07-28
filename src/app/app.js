@@ -8,7 +8,7 @@ import { apiRoutes } from '../routes/index.js';
 import { logger } from '../logging/logger.js';
 
 const app = express();
-
+app.set('json spaces', 2);
 app.use(requestId);
 app.use((req, _res, next) => {
   logger.info({ req: { id: req.id, method: req.method, url: req.url } }, 'Request started');

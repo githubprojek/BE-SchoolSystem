@@ -5,7 +5,14 @@ export const kelasRepo = {
   async findAll() {
     return await getOrSet(
       'kelas:all',
-      () => prisma.kelas.findMany({ include: { waliKelas: true } }),
+      () =>
+        prisma.kelas.findMany({
+          include: {
+            waliKelas: {
+              omit: { password: true },
+            },
+          },
+        }),
       600,
     );
   },
@@ -17,7 +24,11 @@ export const kelasRepo = {
   async findById(id) {
     return await getOrSet(
       `kelas:${id}`,
-      () => prisma.kelas.findUnique({ where: { id }, include: { waliKelas: true } }),
+      () =>
+        prisma.kelas.findUnique({
+          where: { id },
+          include: { waliKelas: { omit: { password: true } } },
+        }),
       600,
     );
   },
@@ -29,7 +40,11 @@ export const kelasRepo = {
   },
 
   async updateById(id, data) {
-    const result = await prisma.kelas.update({ where: { id }, data, include: { waliKelas: true } });
+    const result = await prisma.kelas.update({
+      where: { id },
+      data,
+      include: { waliKelas: { omit: { password: true } } },
+    });
     await Promise.all([invalidateCache(`kelas:${id}`), invalidateCache('kelas:all')]);
     return result;
   },

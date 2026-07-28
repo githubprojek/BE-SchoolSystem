@@ -2,9 +2,19 @@ import { prisma } from '../db/client.js';
 import { getOrSet, invalidateCache } from '../cache/helper.js';
 
 const include = {
-  guru: true,
-  mataPelajaran: true,
-  murid: true,
+  guru: {
+    omit: {
+      password: true,
+      createdAt: true,
+      updatedAt: true,
+      nis: true,
+      nip: true,
+      kelasId: true,
+      mataPelajaranId: true,
+    },
+  },
+  mataPelajaran: { omit: { createdAt: true, updatedAt: true } },
+  murid: { omit: { password: true, createdAt: true, updatedAt: true, nip: true } },
   kelas: true,
 };
 
@@ -34,8 +44,9 @@ export const jadwalRepo = {
       where: { kelasId: kelas, hari, jamMulai: { lt: jamSelesai }, jamSelesai: { gt: jamMulai } },
     });
   },
+
   async create(data) {
-    const result = await prisma.jadwal.create({ data });
+    const result = await prisma.jadwal.create({ data, include });
     await invalidateCache('jadwal:all');
     return result;
   },

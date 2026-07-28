@@ -45,8 +45,18 @@ export const usersController = {
     return sendSuccess(res, { user });
   },
 
+  async updateUsers(req, res) {
+    const parsed = updateUserSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid input', parsed.error.flatten());
+    }
+
+    const user = await userService.updateById(req.params.id, parsed.data);
+    return sendSuccess(res, { user });
+  },
+
   async deleteProfile(req, res) {
-    await userService.deleteById(req.user.id);
+    await userService.deleteById(req.params.id);
     return sendNoContent(res);
   },
 };

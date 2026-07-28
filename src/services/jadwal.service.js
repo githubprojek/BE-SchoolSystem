@@ -4,8 +4,15 @@ import { AppError } from '../errors/AppError.js';
 
 export const jadwalService = {
   async create(data) {
+    if (data.jamMulai >= data.jamSelesai) {
+      throw new AppError(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        'jamMulai harus lebih kecil dari jamSelesai',
+      );
+    }
     const overLap = await jadwalRepo.findOverlap(
-      data.kelas,
+      data.kelasId,
       data.hari,
       data.jamMulai,
       data.jamSelesai,
@@ -43,8 +50,20 @@ export const jadwalService = {
     if (!jadwal) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, 'ID not found');
     }
+
+    if (
+      data.jamMulai !== undefined &&
+      data.jamSelesai !== undefined &&
+      data.jamMulai >= data.jamSelesai
+    ) {
+      throw new AppError(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        'jamMulai harus lebih kecil dari jamSelesai',
+      );
+    }
     const existing = await jadwalRepo.findOverlap(
-      data.kelas,
+      data.kelasId,
       data.hari,
       data.jamMulai,
       data.jamSelesai,
