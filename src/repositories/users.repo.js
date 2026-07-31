@@ -40,6 +40,7 @@ export const userRepo = {
   async updateById(id, data) {
     const result = await prisma.user.update({ where: { id }, data, select: userSelect });
     await Promise.all([invalidateCache(`user:${id}`), invalidateCache('user:all')]);
+    return result;
   },
 
   async deleteById(id) {

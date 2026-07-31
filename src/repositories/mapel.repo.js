@@ -16,7 +16,7 @@ export const mapelRepo = {
 
   async create(data) {
     const result = await prisma.mapel.create({ data });
-    await invalidateCache('mapel:repo');
+    await invalidateCache('mapel:all');
     return result;
   },
 

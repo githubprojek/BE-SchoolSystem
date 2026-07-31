@@ -30,6 +30,11 @@ export const usersController = {
     return sendSuccess(res, { user });
   },
 
+  async findById(req, res) {
+    const user = await userService.getById(req.params.id);
+    return sendSuccess(res, { user });
+  },
+
   async getProfile(req, res) {
     const user = await userService.getById(req.user.id);
     return sendSuccess(res, { user });

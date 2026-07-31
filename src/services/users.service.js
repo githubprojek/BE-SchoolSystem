@@ -41,7 +41,7 @@ export const userService = {
     const user = await userRepo.create(data);
 
     const token = jwt.sign(
-      { sub: user.id, role: user.role, kelas: user.kelas },
+      { sub: user.id, role: user.role, kelasId: user.kelasId },
       config.jwt.secret,
       {
         expiresIn: config.jwt.expiresIn,
