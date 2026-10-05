@@ -35,7 +35,7 @@ describe('Jadwal API', { concurrency: false }, () => {
       password: 'password123',
       role: 'guru',
       nip: 12345,
-      mataPelajaran: mapelId,
+      mataPelajaranId: mapelId,
     });
     guruToken = guruRes.body.data.token;
     guruId = guruRes.body.data.user.id;
@@ -46,7 +46,7 @@ describe('Jadwal API', { concurrency: false }, () => {
       password: 'password123',
       role: 'murid',
       nis: 67890,
-      kelas: kelasId,
+      kelasId: kelasId,
     });
     muridToken = muridRes.body.data.token;
     muridId = muridRes.body.data.user.id;
@@ -69,10 +69,10 @@ describe('Jadwal API', { concurrency: false }, () => {
       .post('/api/v1/jadwal')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        guru: guruId,
-        murid: muridId,
-        mataPelajaran: mapelId,
-        kelas: kelasId,
+        guruId: guruId,
+        muridId: muridId,
+        mataPelajaranId: mapelId,
+        kelasId: kelasId,
         hari: 'senin',
         jamMulai: '07:00',
         jamSelesai: '08:40',
@@ -90,10 +90,10 @@ describe('Jadwal API', { concurrency: false }, () => {
       .post('/api/v1/jadwal')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        guru: guruId,
-        murid: muridId,
-        mataPelajaran: mapelId,
-        kelas: kelasId,
+        guruId: guruId,
+        muridId: muridId,
+        mataPelajaranId: mapelId,
+        kelasId: kelasId,
         hari: 'senin',
         jamMulai: '08:00',
         jamSelesai: '09:30',
@@ -105,8 +105,8 @@ describe('Jadwal API', { concurrency: false }, () => {
 
   it('POST /api/v1/jadwal - 401 without token', async () => {
     const res = await request.post('/api/v1/jadwal').send({
-      guru: guruId,
-      mataPelajaran: mapelId,
+      guruId: guruId,
+      mataPelajaranId: mapelId,
       hari: 'selasa',
       jamMulai: '07:00',
       jamSelesai: '08:40',

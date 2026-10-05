@@ -43,7 +43,7 @@ describe('Absensi API', { concurrency: false }, () => {
       password: 'password123',
       role: 'guru',
       nip: 12345,
-      mataPelajaran: mapelId,
+      mataPelajaranId: mapelId,
     });
     guruToken = guruRes.body.data.token;
     guruId = guruRes.body.data.user.id;
@@ -54,7 +54,7 @@ describe('Absensi API', { concurrency: false }, () => {
       password: 'password123',
       role: 'murid',
       nis: 67890,
-      kelas: kelasId,
+      kelasId: kelasId,
     });
     muridId = muridRes.body.data.user.id;
 
@@ -62,10 +62,10 @@ describe('Absensi API', { concurrency: false }, () => {
       .post('/api/v1/jadwal')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        guru: guruId,
-        murid: muridId,
-        mataPelajaran: mapelId,
-        kelas: kelasId,
+        guruId: guruId,
+        muridId: muridId,
+        mataPelajaranId: mapelId,
+        kelasId: kelasId,
         hari: 'senin',
         jamMulai: '07:00',
         jamSelesai: '08:40',
@@ -82,9 +82,9 @@ describe('Absensi API', { concurrency: false }, () => {
       .post('/api/v1/absen')
       .set('Authorization', `Bearer ${guruToken}`)
       .send({
-        guru: guruId,
-        murid: muridId,
-        jadwal: jadwalId,
+        guruId: guruId,
+        muridId: muridId,
+        jadwalId: jadwalId,
         tanggal: '2026-07-22',
         status: 'hadir',
       });
@@ -99,9 +99,9 @@ describe('Absensi API', { concurrency: false }, () => {
       .post('/api/v1/absen')
       .set('Authorization', `Bearer ${guruToken}`)
       .send({
-        guru: guruId,
-        murid: muridId,
-        jadwal: jadwalId,
+        guruId: guruId,
+        muridId: muridId,
+        jadwalId: jadwalId,
         tanggal: '2026-07-22',
         status: 'hadir',
       });
@@ -112,9 +112,9 @@ describe('Absensi API', { concurrency: false }, () => {
 
   it('POST /api/v1/absen - 401 without token', async () => {
     const res = await request.post('/api/v1/absen').send({
-      guru: guruId,
-      murid: muridId,
-      jadwal: jadwalId,
+      guruId: guruId,
+      muridId: muridId,
+      jadwalId: jadwalId,
       tanggal: '2026-07-23',
       status: 'sakit',
     });
@@ -171,14 +171,14 @@ describe('Absensi API', { concurrency: false }, () => {
     assert.equal(res.body.data.absensi.status, 'sakit');
   });
 
-  it('DELETE /api/v1/absensi/:id - deletes attendance (admin)', async () => {
+  it('DELETE /api/v1/absen/:id - deletes attendance (admin)', async () => {
     const list = await request
       .get('/api/v1/absen')
       .set('Authorization', `Bearer ${adminToken}`);
     const absensiId = list.body.data.absensi[0].id;
 
     const res = await request
-      .delete(`/api/v1/absensi/${absensiId}`)
+      .delete(`/api/v1/absen/${absensiId}`)
       .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 204);

@@ -32,7 +32,7 @@ describe('Nilai API', { concurrency: false }, () => {
       password: 'password123',
       role: 'guru',
       nip: 12345,
-      mataPelajaran: mapelId,
+      mataPelajaranId: mapelId,
     });
     guruToken = guruRes.body.data.token;
     guruId = guruRes.body.data.user.id;
@@ -43,7 +43,7 @@ describe('Nilai API', { concurrency: false }, () => {
       password: 'password123',
       role: 'murid',
       nis: 67890,
-      kelas: kelasId,
+      kelasId: kelasId,
     });
     muridId = muridRes.body.data.user.id;
   });
@@ -57,9 +57,9 @@ describe('Nilai API', { concurrency: false }, () => {
       .post('/api/v1/nilai')
       .set('Authorization', `Bearer ${guruToken}`)
       .send({
-        murid: muridId,
-        guru: guruId,
-        mataPelajaran: mapelId,
+        muridId: muridId,
+        guruId: guruId,
+        mataPelajaranId: mapelId,
         nilai: 85,
         tipe: 'tugas',
         semester: 1,
@@ -76,9 +76,9 @@ describe('Nilai API', { concurrency: false }, () => {
 
   it('POST /api/v1/nilai - 401 without token', async () => {
     const res = await request.post('/api/v1/nilai').send({
-      murid: muridId,
-      guru: guruId,
-      mataPelajaran: mapelId,
+      muridId: muridId,
+      guruId: guruId,
+      mataPelajaranId: mapelId,
       nilai: 90,
       tipe: 'UTS',
       semester: 1,

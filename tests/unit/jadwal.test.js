@@ -13,20 +13,20 @@ describe('Jadwal tests', { concurrency: false }, () => {
 
   const mockJadwal = {
     id: jadwalId,
-    guru: guruId,
-    mataPelajaran: mapelId,
-    kelas: kelasId,
-    murid: muridId,
+    guruId: guruId,
+    mataPelajaranId: mapelId,
+    kelasId: kelasId,
+    muridId: muridId,
     hari: 'senin',
     jamMulai: 420,
     jamSelesai: 560,
   };
 
   const inputJadwal = {
-    guru: guruId,
-    mataPelajaran: mapelId,
-    kelas: kelasId,
-    murid: muridId,
+    guruId: guruId,
+    mataPelajaranId: mapelId,
+    kelasId: kelasId,
+    muridId: muridId,
     hari: 'senin',
     jamMulai: 420,
     jamSelesai: 560,
@@ -38,10 +38,10 @@ describe('Jadwal tests', { concurrency: false }, () => {
       mock.method(jadwalRepo, 'create', async () => mockJadwal);
 
       const result = await jadwalService.create(inputJadwal);
-      assert.equal(result.guru, guruId);
-      assert.equal(result.mataPelajaran, mapelId);
-      assert.equal(result.kelas, kelasId);
-      assert.equal(result.murid, muridId);
+      assert.equal(result.guruId, guruId);
+      assert.equal(result.mataPelajaranId, mapelId);
+      assert.equal(result.kelasId, kelasId);
+      assert.equal(result.muridId, muridId);
       assert.equal(result.hari, 'senin');
       assert.equal(result.jamMulai, 420);
       assert.equal(result.jamSelesai, 560);
@@ -49,7 +49,7 @@ describe('Jadwal tests', { concurrency: false }, () => {
 
     it('throw 409 when jadwal crashed', async () => {
       mock.method(jadwalRepo, 'findOverlap', async () => [
-        { kelas: kelasId, hari: 'senin', jamMulai: 420, jamSelesai: 560 },
+        { kelasId: kelasId, hari: 'senin', jamMulai: 420, jamSelesai: 560 },
       ]);
 
       await assert.rejects(
@@ -69,7 +69,7 @@ describe('Jadwal tests', { concurrency: false }, () => {
       mock.method(jadwalRepo, 'findAll', async () => [mockJadwal]);
       const result = await jadwalService.findAll();
       assert.equal(result.length, 1);
-      assert.equal(result[0].guru, guruId);
+      assert.equal(result[0].guruId, guruId);
     });
   });
 
@@ -77,7 +77,7 @@ describe('Jadwal tests', { concurrency: false }, () => {
     it('Return jadwal when found', async () => {
       mock.method(jadwalRepo, 'findById', () => mockJadwal);
       const result = await jadwalService.findById(jadwalId);
-      assert.equal(result.guru, guruId);
+      assert.equal(result.guruId, guruId);
       assert.equal(result.id, jadwalId);
     });
 

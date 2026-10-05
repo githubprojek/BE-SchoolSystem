@@ -12,9 +12,9 @@ describe('Nilai test', { concurrency: false }, () => {
 
   const mockNilai = {
     _id: nilaiId,
-    murid: muridId,
-    mataPelajaran: mapelId,
-    guru: guruId,
+    muridId: muridId,
+    mataPelajaranId: mapelId,
+    guruId: guruId,
     nilai: 90,
     tipe: 'tugas',
     semester: 2,
@@ -23,9 +23,9 @@ describe('Nilai test', { concurrency: false }, () => {
 
   const inputNilai = {
     _id: nilaiId,
-    murid: muridId,
-    mataPelajaran: mapelId,
-    guru: guruId,
+    muridId: muridId,
+    mataPelajaranId: mapelId,
+    guruId: guruId,
     nilai: 90,
     tipe: 'tugas',
     semester: 2,
@@ -41,9 +41,9 @@ describe('Nilai test', { concurrency: false }, () => {
       mock.method(nilaiRepo, 'create', async () => mockNilai);
       const result = await nilaiService.create(inputNilai);
 
-      assert.equal(result.murid, muridId);
-      assert.equal(result.mataPelajaran, mapelId);
-      assert.equal(result.guru, guruId);
+      assert.equal(result.muridId, muridId);
+      assert.equal(result.mataPelajaranId, mapelId);
+      assert.equal(result.guruId, guruId);
       assert.equal(result.tipe, 'tugas');
       assert.equal(result.semester, 2);
       assert.equal(result.tahunAjaran, '2013/2014');
@@ -84,6 +84,7 @@ describe('Nilai test', { concurrency: false }, () => {
 
   describe('update', async () => {
     it('Update nilai successfully', async () => {
+      mock.method(nilaiRepo, 'findById', async () => mockNilai);
       mock.method(nilaiRepo, 'updateById', async () => ({ ...mockNilai, nilai: 20 }));
       const result = await nilaiService.updateById(nilaiId, { nilai: 20 });
 
@@ -107,6 +108,7 @@ describe('Nilai test', { concurrency: false }, () => {
 
   describe('deleteById', async () => {
     it('Delete nilai successfully', async () => {
+      mock.method(nilaiRepo, 'findById', async () => mockNilai);
       mock.method(nilaiRepo, 'deleteById', async () => mockNilai);
 
       await assert.doesNotReject(nilaiService.deleteById(mockNilai._id));

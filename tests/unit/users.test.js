@@ -140,7 +140,7 @@ describe('User tests', { concurrency: false }, () => {
             password: 'password123',
             role: 'murid',
             nis: undefined,
-            kelas: '507f1f77bcf86cd799439013',
+            kelasId: '507f1f77bcf86cd799439013',
             nip: undefined,
             mataPelajaranId: undefined,
           }),
@@ -164,7 +164,7 @@ describe('User tests', { concurrency: false }, () => {
             password: 'password123',
             role: 'murid',
             nis: 12345,
-            kelas: undefined,
+            kelasId: undefined,
             nip: undefined,
             mataPelajaranId: undefined,
           }),
@@ -184,7 +184,7 @@ describe('User tests', { concurrency: false }, () => {
       email: 'budi@test.com',
       role: 'guru',
       password: 'hashed-password',
-      kelas: kelasId,
+      kelasId: kelasId,
     };
 
     it('returns user + token with valid credentials', async () => {
