@@ -4,7 +4,7 @@ import { AppError } from '../errors/AppError.js';
 
 export const absensiService = {
   async create(data) {
-    const existing = await absensiRepo.findConflict(data.muridId, data.jadwal, data.tanggal);
+    const existing = await absensiRepo.findConflict(data.muridId, data.jadwalId, data.tanggal);
     if (existing) {
       throw new AppError(409, ErrorCodes.CONFLICT, 'Conflict: cannot have the same data');
     }
