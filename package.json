@@ -9,7 +9,7 @@
     "lint": "eslint src/",
     "format": "prettier --write src/",
     "test": "node --env-file-if-exists=.env.test --experimental-test-coverage --test",
-    "test:unit": "node --env-file-if-exists=.env.test --test ./tests/unit/**/*.test.js",
+    "test:unit": "node --env-file-if-exists=.env.test --test-force-exit --test ./tests/unit/**/*.test.js",
     "test:int": "node --env-file-if-exists=.env.test --test-concurrency=1 --experimental-test-coverage --test-force-exit --test ./tests/integration/**/*.test.js",
     "db:migrate": "npx prisma migrate dev",
     "db:migrate:deploy": "npx prisma migrate deploy",
@@ -23,6 +23,7 @@
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "helmet": "^7.1.0",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "pino": "^9.4.0",
     "zod": "^3.23.0"

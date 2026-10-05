@@ -59,6 +59,6 @@ export const jadwalRepo = {
 
   async deleteById(id) {
     await prisma.jadwal.delete({ where: { id } });
-    await Promise.all([invalidateCache(`absensi:${id}`), invalidateCache('absensi:all')]);
+    await Promise.all([invalidateCache(`jadwal:${id}`), invalidateCache('jadwal:all')]);
   },
 };
