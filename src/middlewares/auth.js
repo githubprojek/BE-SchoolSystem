@@ -12,7 +12,7 @@ export function authenticate(req, _res, next) {
   const token = header.split(' ')[1];
   try {
     const payload = jwt.verify(token, config.jwt.secret);
-    req.user = { id: payload.sub, role: payload.role, kelas: payload.kelas };
+    req.user = { id: payload.sub, role: payload.role, kelasId: payload.kelasId };
     next();
   } catch {
     next(new AppError(401, ErrorCodes.UNAUTHORIZED, 'Invalid or expired token'));

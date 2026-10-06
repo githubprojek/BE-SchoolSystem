@@ -30,7 +30,7 @@ export const jadwalController = {
       jadwal = await jadwalService.getByGuru(req.user.id);
     }
     if (req.user.role === 'murid') {
-      jadwal = await jadwalService.getByKelas(req.user.kelas);
+      jadwal = await jadwalService.getByKelas(req.user.kelasId);
     }
     return sendSuccess(res, { jadwal });
   },
