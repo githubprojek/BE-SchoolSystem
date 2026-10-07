@@ -9,12 +9,16 @@ export const kelasService = {
       throw new AppError(409, ErrorCodes.CONFLICT, 'Class and grade conflict');
     }
     const kelas = await kelasRepo.create(data);
-
     return kelas;
   },
 
-  async findAll() {
-    return await kelasRepo.findAll();
+  async findAll({ page = 1, limit = 10, nama, tingkat, sortBy, sortOrder } = {}) {
+    const filter = nama !== undefined || tingkat !== undefined ? { nama, tingkat } : undefined;
+
+    const sort =
+      sortBy !== undefined || sortOrder !== undefined ? { sortBy, sortOrder } : undefined;
+
+    return await kelasRepo.findAll({ page, limit, filter, sort });
   },
 
   async getById(id) {
@@ -34,7 +38,6 @@ export const kelasService = {
     if (existing && existing.id !== id) {
       throw new AppError(409, ErrorCodes.CONFLICT, 'Class or Grade conflict');
     }
-
     return await kelasRepo.updateById(id, data);
   },
 

@@ -1,5 +1,6 @@
 import { kelasService } from '../services/kelas.service.js';
 import { createKelasSchema, updateKelasSchema } from '../validators/kelas.schema.js';
+import { paginationSchema } from '../validators/pagination.schema.js';
 import { sendCreated, sendSuccess, sendNoContent } from '../utils/http-response.js';
 import { AppError } from '../errors/AppError.js';
 import { ErrorCodes } from '../errors/error-codes.js';
@@ -15,8 +16,23 @@ export const kelasController = {
   },
 
   async findAll(req, res) {
-    const kelas = await kelasService.findAll();
-    return sendSuccess(res, { kelas });
+    const parsed = paginationSchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new AppError(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        'Invalid pagination query',
+        parsed.error.flatten(),
+      );
+    }
+
+    const { page, limit } = parsed.data;
+    const { items, total } = await kelasService.findAll(parsed.data);
+
+    return sendSuccess(res, {
+      kelas: items,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   },
 
   async findById(req, res) {

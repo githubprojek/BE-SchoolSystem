@@ -52,12 +52,41 @@ describe('Kelas tests', { concurrency: false }, () => {
   });
 
   describe('findAll', () => {
-    it('Return all kelas', async () => {
-      mock.method(kelasRepo, 'findAll', async () => [mockKelas]);
+    it('Return paginated kelas with filter & sort', async () => {
+      mock.method(kelasRepo, 'findAll', async () => ({
+        items: [mockKelas],
+        total: 1,
+      }));
 
-      const result = await kelasService.findAll();
-      assert.equal(result.length, 1);
-      assert.equal(result[0].nama, '10A');
+      const result = await kelasService.findAll({ page: 1, limit: 10 });
+
+      assert.deepEqual(result, { items: [mockKelas], total: 1 });
+    });
+
+    it('Apply filter nama in service call', async () => {
+      mock.method(kelasRepo, 'findAll', async () => ({
+        items: [mockKelas],
+        total: 1,
+      }));
+
+      const result = await kelasService.findAll({ filter: { nama: '10A' } });
+
+      assert.equal(result.items[0].nama, '10A');
+      assert.equal(result.total, 1);
+    });
+
+    it('Apply sort in service call', async () => {
+      mock.method(kelasRepo, 'findAll', async () => ({
+        items: [mockKelas],
+        total: 1,
+      }));
+
+      const result = await kelasService.findAll({
+        sortBy: 'tingkat',
+        sortOrder: 'desc',
+      });
+
+      assert.equal(result.items[0].tingkat, 10);
     });
   });
 
