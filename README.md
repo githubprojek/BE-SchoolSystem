@@ -15,7 +15,6 @@ Backend API untuk Sistem Informasi Sekolah. Dibangun dengan Node.js, Express, Pr
 - [API Endpoints](#api-endpoints)
 - [Alur Refresh Token](#alur-refresh-token)
 - [Kontribusi](#kontribusi)
-  ① Daftar Isi (baris 5–16) — tambah 1 baris
 
 ## Prerequisites
 
@@ -187,19 +186,19 @@ BE-SchoolSystem/
 
 ## API Endpoints
 
-| Method | Endpoint              | Role          | Keterangan                                |
-| ------ | --------------------- | ------------- | ----------------------------------------- |
-| POST   | `/api/v1/register`    | Public        | Registrasi user                           |
-| POST   | `/api/v1/login`       | Public        | Login                                     |
-| GET    | `/api/v1/me`          | Semua         | Lihat profil                              |
-| PATCH  | `/api/v1/me`          | Semua         | Update profil                             |
-| GET    | `/api/v1/users`       | Admin/Guru    | Daftar user                               |
-| GET    | `/api/v1/jadwal`      | Authenticated | Daftar jadwal                             |
-| POST   | `/api/v1/jadwal`      | Admin         | Buat jadwal                               |
-| GET    | `/api/v1/jadwal-saya` | Guru/Murid    | Jadwal saya                               |
-| POST   | `/api/v1/absen`       | Admin/Guru    | Buat absensi                              |
-| GET    | `/api/v1/absen`       | Authenticated | Daftar absensi                            |
-| POST   | `/api/v1/nilai`       | Admin/Guru    | Input nilai                               |
-| GET    | `/api/v1/nilai`       | Authenticated | Daftar nilai                              |
-| POST   | `/api/v1/refresh`     | Public        | Tukar refresh token → pasangan token baru |
-| POST   | `/api/v1/logout`      | Public        | Cabut refresh token (logout)              |
+| Method | Endpoint              | Role          | Keterangan                                     |
+| ------ | --------------------- | ------------- | ---------------------------------------------- |
+| POST   | `/api/v1/register`    | Public        | Registrasi user                                |
+| POST   | `/api/v1/login`       | Public        | Login                                          |
+| GET    | `/api/v1/me`          | Semua         | Lihat profil                                   |
+| PATCH  | `/api/v1/me`          | Semua         | Update profil                                  |
+| GET    | `/api/v1/users`       | Admin/Guru    | Daftar user                                    |
+| GET    | `/api/v1/jadwal`      | Authenticated | Daftar jadwal                                  |
+| POST   | `/api/v1/jadwal`      | Admin         | Buat jadwal                                    |
+| GET    | `/api/v1/jadwal-saya` | Guru/Murid    | Jadwal saya                                    |
+| POST   | `/api/v1/absen`       | Admin/Guru    | Buat absensi                                   |
+| GET    | `/api/v1/absen`       | Authenticated | Daftar absensi                                 |
+| POST   | `/api/v1/nilai`       | Admin/Guru    | Input nilai                                    |
+| GET    | `/api/v1/nilai`       | Authenticated | Daftar nilai                                   |
+| POST   | `/api/v1/refresh`     | Public        | Tukar refresh token dengan pasangan token baru |
+| POST   | `/api/v1/logout`      | Public        | Cabut refresh token (logout)                   |
