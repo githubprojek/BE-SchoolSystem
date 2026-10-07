@@ -16,6 +16,7 @@ describe('Users API', { concurrency: false }, () => {
     await prisma.absensi.deleteMany();
     await prisma.nilai.deleteMany();
     await prisma.jadwal.deleteMany();
+    await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
     await prisma.kelas.deleteMany();
     await prisma.mapel.deleteMany();
@@ -67,6 +68,7 @@ describe('Users API', { concurrency: false }, () => {
       assert.equal(res.body.data.user.nip, 123454);
       assert.equal(res.body.data.user.mataPelajaranId, mapelId);
       assert.ok(res.body.data.token);
+      assert.ok(res.body.data.refreshToken);
     });
 
     it('POST /api/v1/register - creates a murid user', async () => {
@@ -164,6 +166,7 @@ describe('Users API', { concurrency: false }, () => {
       assert.equal(res.body.data.user.email, 'guru@test.com');
       assert.equal(res.body.data.user.role, 'guru');
       assert.ok(res.body.data.token);
+      assert.ok(res.body.data.refreshToken);
     });
 
     it('POST /api/v1/login - 401 wrong password', async () => {
@@ -234,6 +237,124 @@ describe('Users API', { concurrency: false }, () => {
       const res = await request.get('/api/v1/users');
 
       assert.equal(res.status, 401);
+    });
+  });
+
+  describe('Refresh Token', () => {
+    let loginAccessToken;
+    let firstRefreshToken;
+
+    before(async () => {
+      const res = await request.post('/api/v1/login').send({
+        email: 'guru@test.com',
+        password: 'password123',
+      });
+
+      assert.equal(res.status, 200);
+      loginAccessToken = res.body.data.token;
+      firstRefreshToken = res.body.data.refreshToken;
+    });
+
+    it('POST /api/v1/refresh - rotates token pair', async () => {
+      const res = await request.post('/api/v1/refresh').send({ refreshToken: firstRefreshToken });
+
+      assert.equal(res.status, 200);
+      assert.equal(res.body.success, true);
+      assert.ok(res.body.data.token);
+      assert.ok(res.body.data.refreshToken);
+      assert.notEqual(res.body.data.refreshToken, firstRefreshToken);
+    });
+
+    it('access token biasa masih valid setelah rotasi', async () => {
+      const res = await request.get('/api/v1/me').set('Authorization', `Bearer ${loginAccessToken}`);
+
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data.user.email, 'guru@test.com');
+    });
+
+    it('POST /api/v1/refresh - 401 untuk refresh token lama (reuse)', async () => {
+      const res = await request.post('/api/v1/refresh').send({ refreshToken: firstRefreshToken });
+
+      assert.equal(res.status, 401);
+      assert.equal(res.body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/v1/refresh - 401 saat memakai access token', async () => {
+      const res = await request.post('/api/v1/refresh').send({ refreshToken: loginAccessToken });
+
+      assert.equal(res.status, 401);
+      assert.equal(res.body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/v1/refresh - 400 saat refreshToken kosong', async () => {
+      const res = await request.post('/api/v1/refresh').send({});
+
+      assert.equal(res.status, 400);
+      assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('POST /api/v1/refresh - 401 untuk token bukan JWT', async () => {
+      const res = await request.post('/api/v1/refresh').send({ refreshToken: 'bukan-jwt-sama-sekali' });
+
+      assert.equal(res.status, 401);
+      assert.equal(res.body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('GET /api/v1/me - 401 untuk token tanpa Bearer', async () => {
+      const res = await request.get('/api/v1/me').set('Authorization', loginAccessToken);
+
+      assert.equal(res.status, 401);
+    });
+  });
+
+  describe('Logout', () => {
+    let logoutRefreshToken;
+
+    before(async () => {
+      const res = await request.post('/api/v1/login').send({
+        email: 'guru@test.com',
+        password: 'password123',
+      });
+
+      assert.equal(res.status, 200);
+      logoutRefreshToken = res.body.data.refreshToken;
+    });
+
+    it('POST /api/v1/logout - 204 lalu refresh token tidak berlaku lagi', async () => {
+      const out = await request.post('/api/v1/logout').send({ refreshToken: logoutRefreshToken });
+      assert.equal(out.status, 204);
+
+      const res = await request.post('/api/v1/refresh').send({ refreshToken: logoutRefreshToken });
+      assert.equal(res.status, 401);
+      assert.equal(res.body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/v1/logout - 204 untuk token yang tidak dikenal', async () => {
+      const res = await request.post('/api/v1/logout').send({ refreshToken: 'token-ngawur' });
+
+      assert.equal(res.status, 204);
+    });
+
+    it('POST /api/v1/logout - 400 tanpa refresh token', async () => {
+      const res = await request.post('/api/v1/logout').send({});
+
+      assert.equal(res.status, 400);
+      assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('access token biasa masih bisa dipakai setelah logout', async () => {
+      const login = await request.post('/api/v1/login').send({
+        email: 'admin@test.com',
+        password: 'admin1234',
+      });
+
+      const out = await request
+        .post('/api/v1/logout')
+        .send({ refreshToken: login.body.data.refreshToken });
+      assert.equal(out.status, 204);
+
+      const res = await request.get('/api/v1/me').set('Authorization', `Bearer ${login.body.data.token}`);
+      assert.equal(res.status, 200);
     });
   });
 });

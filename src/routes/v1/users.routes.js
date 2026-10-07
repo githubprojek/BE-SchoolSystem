@@ -30,4 +30,7 @@ router.delete(
   asyncHandler(usersController.deleteProfile),
 );
 
+router.post('/refresh', asyncHandler(usersController.refresh));
+router.post('/logout', asyncHandler(usersController.logout));
+
 export { router as usersRoutes };

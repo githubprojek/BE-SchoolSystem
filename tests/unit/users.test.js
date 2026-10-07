@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { userRepo } from '../../src/repositories/users.repo.js';
+import { refreshTokenRepo } from '../../src/repositories/refresh-token.repo.js';
 import { userService } from '../../src/services/users.service.js';
 import { AppError } from '../../src/errors/AppError.js';
 
@@ -30,8 +31,19 @@ describe('User tests', { concurrency: false }, () => {
     mataPelajaranId: mapelId,
   };
 
+  // JWT tiruan berformat header.payload.signature supaya jwt.decode() tidak null
+  function fakeJwt(payload) {
+    const body = Buffer.from(
+      JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + 900 }),
+    ).toString('base64url');
+    return `eyJhbGciOiJIUzI1NiJ9.${body}.signature`;
+  }
+
   beforeEach(() => {
-    mock.method(jwt, 'sign', () => 'fake-jwt-token');
+    // sign di-call 2x (access + refresh) → hasilkan token tiruan yang tetap bisa di-decode
+    mock.method(jwt, 'sign', (payload) => fakeJwt(payload));
+    // jangan sampai unit test menyentuh database
+    mock.method(refreshTokenRepo, 'create', async () => ({ id: 'rt-1' }));
   });
 
   afterEach(() => {
@@ -49,7 +61,11 @@ describe('User tests', { concurrency: false }, () => {
       assert.equal(result.user.nama, 'Budi');
       assert.equal(result.user.role, 'guru');
       assert.equal(result.user.nip, 12345);
-      assert.equal(result.token, 'fake-jwt-token');
+      assert.ok(result.token);
+      assert.ok(result.refreshToken);
+      assert.equal(jwt.decode(result.token).typ, 'access');
+      assert.equal(jwt.decode(result.refreshToken).typ, 'refresh');
+      assert.equal(refreshTokenRepo.create.mock.calls.length, 1);
       assert.equal(bcrypt.hash.mock.calls.length, 1);
     });
 
@@ -81,6 +97,8 @@ describe('User tests', { concurrency: false }, () => {
       assert.equal(result.user.nama, 'Siti');
       assert.equal(result.user.role, 'murid');
       assert.equal(result.user.nis, 67890);
+      assert.ok(result.token);
+      assert.ok(result.refreshToken);
     });
 
     it('throws 409 when email already exists', async () => {
@@ -194,7 +212,11 @@ describe('User tests', { concurrency: false }, () => {
       const result = await userService.login({ email: 'budi@test.com', password: 'password123' });
 
       assert.equal(result.user.email, 'budi@test.com');
-      assert.equal(result.token, 'fake-jwt-token');
+      assert.ok(result.token);
+      assert.ok(result.refreshToken);
+      assert.equal(jwt.decode(result.token).typ, 'access');
+      assert.equal(jwt.decode(result.refreshToken).typ, 'refresh');
+      assert.equal(refreshTokenRepo.create.mock.calls.length, 1);
     });
 
     it('throws 401 when email not found', async () => {
@@ -362,6 +384,177 @@ describe('User tests', { concurrency: false }, () => {
           return true;
         },
       );
+    });
+  });
+
+  describe('refresh', () => {
+    const activeRow = {
+      id: 'rt-1',
+      tokenHash: 'some-hash',
+      userId: guruId,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    };
+
+    it('returns new token pair when refresh token is valid', async () => {
+      mock.method(jwt, 'verify', () => ({ sub: guruId, typ: 'refresh' }));
+      mock.method(refreshTokenRepo, 'findByHash', async () => activeRow);
+      mock.method(refreshTokenRepo, 'revoke', async () => ({ count: 1 }));
+      mock.method(refreshTokenRepo, 'revokeAllForUser', async () => ({ count: 0 }));
+      mock.method(userRepo, 'findById', async () => ({ id: guruId, role: 'guru', kelasId }));
+
+      const result = await userService.refresh('valid-refresh-token');
+
+      assert.ok(result.token);
+      assert.ok(result.refreshToken);
+      assert.notEqual(result.refreshToken, 'valid-refresh-token');
+      assert.equal(jwt.decode(result.token).typ, 'access');
+      assert.equal(jwt.decode(result.refreshToken).typ, 'refresh');
+      // rotasi: token lama di-revoke, sesi TIDAK dicabut semua
+      assert.equal(refreshTokenRepo.revoke.mock.calls.length, 1);
+      assert.equal(refreshTokenRepo.revokeAllForUser.mock.calls.length, 0);
+      assert.equal(refreshTokenRepo.create.mock.calls.length, 1);
+    });
+
+    it('throws 401 when refresh token is invalid or expired', async () => {
+      mock.method(jwt, 'verify', () => {
+        throw new Error('jwt expired');
+      });
+
+      await assert.rejects(
+        () => userService.refresh('expired-token'),
+        (err) => {
+          assert.ok(err instanceof AppError);
+          assert.equal(err.statusCode, 401);
+          assert.equal(err.code, 'UNAUTHORIZED');
+          return true;
+        },
+      );
+    });
+
+    it('throws 401 when access token is used as refresh token', async () => {
+      mock.method(jwt, 'verify', () => ({ sub: guruId, typ: 'access' }));
+
+      await assert.rejects(
+        () => userService.refresh('access-token'),
+        (err) => {
+          assert.equal(err.statusCode, 401);
+          assert.equal(err.code, 'UNAUTHORIZED');
+          assert.equal(err.message, 'Invalid token type');
+          return true;
+        },
+      );
+    });
+
+    it('throws 401 when token hash is not stored in db', async () => {
+      mock.method(jwt, 'verify', () => ({ sub: guruId, typ: 'refresh' }));
+      mock.method(refreshTokenRepo, 'findByHash', async () => null);
+
+      await assert.rejects(
+        () => userService.refresh('unknown-token'),
+        (err) => {
+          assert.equal(err.statusCode, 401);
+          assert.equal(err.code, 'UNAUTHORIZED');
+          return true;
+        },
+      );
+    });
+
+    it('revokes all user sessions when revoked token is reused', async () => {
+      mock.method(jwt, 'verify', () => ({ sub: guruId, typ: 'refresh' }));
+      mock.method(refreshTokenRepo, 'findByHash', async () => ({
+        ...activeRow,
+        revokedAt: new Date(),
+      }));
+      mock.method(refreshTokenRepo, 'revokeAllForUser', async () => ({ count: 3 }));
+
+      await assert.rejects(
+        () => userService.refresh('reused-token'),
+        (err) => {
+          assert.equal(err.statusCode, 401);
+          assert.equal(err.code, 'UNAUTHORIZED');
+          assert.equal(err.message, 'Refresh token reuse detected');
+          return true;
+        },
+      );
+
+      assert.equal(refreshTokenRepo.revokeAllForUser.mock.calls.length, 1);
+      assert.equal(refreshTokenRepo.revokeAllForUser.mock.calls[0].arguments[0], guruId);
+    });
+
+    it('throws 401 when stored token is already expired', async () => {
+      mock.method(jwt, 'verify', () => ({ sub: guruId, typ: 'refresh' }));
+      mock.method(refreshTokenRepo, 'findByHash', async () => ({
+        ...activeRow,
+        expiresAt: new Date(Date.now() - 1000),
+      }));
+
+      await assert.rejects(
+        () => userService.refresh('stale-token'),
+        (err) => {
+          assert.equal(err.statusCode, 401);
+          assert.equal(err.code, 'UNAUTHORIZED');
+          return true;
+        },
+      );
+    });
+
+    it('throws 401 when rotation loses the race (count 0)', async () => {
+      mock.method(jwt, 'verify', () => ({ sub: guruId, typ: 'refresh' }));
+      mock.method(refreshTokenRepo, 'findByHash', async () => activeRow);
+      mock.method(refreshTokenRepo, 'revoke', async () => ({ count: 0 }));
+
+      await assert.rejects(
+        () => userService.refresh('concurrent-token'),
+        (err) => {
+          assert.equal(err.statusCode, 401);
+          assert.equal(err.code, 'UNAUTHORIZED');
+          return true;
+        },
+      );
+    });
+
+    it('throws 401 when user no longer exists', async () => {
+      mock.method(jwt, 'verify', () => ({ sub: guruId, typ: 'refresh' }));
+      mock.method(refreshTokenRepo, 'findByHash', async () => activeRow);
+      mock.method(refreshTokenRepo, 'revoke', async () => ({ count: 1 }));
+      mock.method(userRepo, 'findById', async () => null);
+
+      await assert.rejects(
+        () => userService.refresh('orphan-token'),
+        (err) => {
+          assert.equal(err.statusCode, 401);
+          assert.equal(err.code, 'UNAUTHORIZED');
+          return true;
+        },
+      );
+    });
+  });
+
+  describe('logout', () => {
+    it('revokes the refresh token', async () => {
+      mock.method(refreshTokenRepo, 'revoke', async () => ({ count: 1 }));
+
+      await assert.doesNotReject(() => userService.logout('some-refresh-token'));
+
+      assert.equal(refreshTokenRepo.revoke.mock.calls.length, 1);
+      assert.equal(refreshTokenRepo.revoke.mock.calls[0].arguments[0].length, 64); // sha256 hex
+    });
+
+    it('does nothing when token is empty', async () => {
+      mock.method(refreshTokenRepo, 'revoke', async () => ({ count: 0 }));
+
+      await assert.doesNotReject(() => userService.logout(''));
+
+      assert.equal(refreshTokenRepo.revoke.mock.calls.length, 0);
+    });
+
+    it('does not throw when token is unknown', async () => {
+      mock.method(refreshTokenRepo, 'revoke', async () => ({ count: 0 }));
+
+      await assert.doesNotReject(() => userService.logout('unknown-token'));
+
+      assert.equal(refreshTokenRepo.revoke.mock.calls.length, 1);
     });
   });
 });

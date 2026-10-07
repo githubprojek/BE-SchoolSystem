@@ -6,7 +6,7 @@ export async function getOrSet(key, fetchFn, ttl = 300) {
 
   try {
     const cached = await redis.get(key);
-    if (cached !== null) return JSON.parse(cached);   // ← tambahan: ioredis balikin string
+    if (cached !== null) return JSON.parse(cached);
   } catch (err) {
     logger.debug({ key, err: err.message }, 'Cache read gagal - query DB langsung');
   }

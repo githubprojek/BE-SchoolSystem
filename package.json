@@ -11,8 +11,10 @@
     "test": "node --env-file-if-exists=.env.test --experimental-test-coverage --test",
     "test:unit": "node --env-file-if-exists=.env.test --test-force-exit --test ./tests/unit/**/*.test.js",
     "test:int": "node --env-file-if-exists=.env.test --test-concurrency=1 --experimental-test-coverage --test-force-exit --test ./tests/integration/**/*.test.js",
-    "db:migrate": "npx prisma migrate dev",
-    "db:migrate:deploy": "npx prisma migrate deploy",
+   "db:migrate": "npx prisma migrate dev",
+"db:migrate:deploy": "npx prisma migrate deploy",
+"db:migrate:test": "node --env-file-if-exists=.env.test ./node_modules/prisma/build/index.js migrate deploy",
+"db:migrate:all": "npm run db:migrate && npm run db:migrate:test",
     "db:seed": "node --env-file-if-exists=.env src/db/seed.js",
     "db:studio": "npx prisma studio"
   },
