@@ -1,5 +1,6 @@
 export function sendSuccess(res, data, statusCode = 200) {
-  return res.status(statusCode).json({ success: true, data });
+  const body = JSON.stringify({ success: true, data }, null, 2);
+  return res.status(statusCode).type('application/json').send(body);
 }
 
 export function sendCreated(res, data) {
