@@ -11,8 +11,12 @@ export const absensiService = {
     return await absensiRepo.create(data);
   },
 
-  async findAll() {
-    return await absensiRepo.findAll();
+  async findAll({ page = 1, limit = 10, status, sortBy, sortOrder } = {}) {
+    const filter = status !== undefined ? { status } : undefined;
+
+    const sort = sortBy !== undefined ? { sortBy, sortOrder: sortOrder ?? 'desc' } : undefined;
+
+    return await absensiRepo.findAll({ page, limit, filter, sort });
   },
 
   async findById(id) {

@@ -123,9 +123,7 @@ describe('Absensi API', { concurrency: false }, () => {
   });
 
   it('GET /api/v1/absen - returns all attendance', async () => {
-    const res = await request
-      .get('/api/v1/absen')
-      .set('Authorization', `Bearer ${guruToken}`);
+    const res = await request.get('/api/v1/absen').set('Authorization', `Bearer ${guruToken}`);
 
     assert.equal(res.status, 200);
     assert.ok(Array.isArray(res.body.data.absensi));
@@ -133,9 +131,7 @@ describe('Absensi API', { concurrency: false }, () => {
   });
 
   it('GET /api/v1/absen/:id - returns attendance by id', async () => {
-    const list = await request
-      .get('/api/v1/absen')
-      .set('Authorization', `Bearer ${guruToken}`);
+    const list = await request.get('/api/v1/absen').set('Authorization', `Bearer ${guruToken}`);
     const absensiId = list.body.data.absensi[0].id;
 
     const res = await request
@@ -157,9 +153,7 @@ describe('Absensi API', { concurrency: false }, () => {
   });
 
   it('PATCH /api/v1/absen/:id - updates attendance (guru)', async () => {
-    const list = await request
-      .get('/api/v1/absen')
-      .set('Authorization', `Bearer ${guruToken}`);
+    const list = await request.get('/api/v1/absen').set('Authorization', `Bearer ${guruToken}`);
     const absensiId = list.body.data.absensi[0].id;
 
     const res = await request
@@ -172,9 +166,7 @@ describe('Absensi API', { concurrency: false }, () => {
   });
 
   it('DELETE /api/v1/absen/:id - deletes attendance (admin)', async () => {
-    const list = await request
-      .get('/api/v1/absen')
-      .set('Authorization', `Bearer ${adminToken}`);
+    const list = await request.get('/api/v1/absen').set('Authorization', `Bearer ${adminToken}`);
     const absensiId = list.body.data.absensi[0].id;
 
     const res = await request
@@ -182,5 +174,50 @@ describe('Absensi API', { concurrency: false }, () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 204);
+  });
+
+  it('GET /api/v1/absen?status=hadir - filters by status', async () => {
+    await request.post('/api/v1/absen').set('Authorization', `Bearer ${guruToken}`).send({
+      guruId: guruId,
+      muridId: muridId,
+      jadwalId: jadwalId,
+      tanggal: '2026-07-22',
+      status: 'hadir',
+    });
+
+    const res = await request
+      .get('/api/v1/absen?status=hadir')
+      .set('Authorization', `Bearer ${guruToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.absensi.length, 1);
+    assert.equal(res.body.data.meta.total, 1);
+  });
+
+  it('GET /api/v1/absen - sorted by tanggal desc by default', async () => {
+    await request.post('/api/v1/absen').set('Authorization', `Bearer ${guruToken}`).send({
+      guruId: guruId,
+      muridId: muridId,
+      jadwalId: jadwalId,
+      tanggal: '2026-07-01',
+      status: 'sakit',
+    });
+
+    const res = await request.get('/api/v1/absen').set('Authorization', `Bearer ${guruToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.absensi.length, 2);
+
+    assert.ok(res.body.data.absensi[0].tanggal >= res.body.data.absensi[1].tanggal);
+    assert.equal(res.body.data.meta.total, 2);
+  });
+
+  it('GET /api/v1/absen?status=malam - 400 invalid status', async () => {
+    const res = await request
+      .get('/api/v1/absen?status=malam')
+      .set('Authorization', `Bearer ${guruToken}`);
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error.code, 'VALIDATION_ERROR');
   });
 });

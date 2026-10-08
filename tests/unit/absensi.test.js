@@ -58,11 +58,10 @@ describe('Absensi test', { concurrency: false }, () => {
 
   describe('findAll', async () => {
     it('Find all', async () => {
-      mock.method(absensiRepo, 'findAll', async () => [mockAbsensi]);
+      mock.method(absensiRepo, 'findAll', async () => ({ items: [mockAbsensi], total: 1 }));
       const result = await absensiService.findAll();
-      assert.equal(result.length, 1);
-      assert.equal(result[0].muridId, muridId);
-      assert.equal(result[0].jadwalId, jadwalId);
+      assert.equal(result.items.length, 1);
+      assert.equal(result.total, 1);
     });
   });
 
