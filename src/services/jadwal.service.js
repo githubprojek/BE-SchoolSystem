@@ -24,9 +24,12 @@ export const jadwalService = {
     return await jadwalRepo.create(data);
   },
 
-  async findAll() {
-    const jadwal = await jadwalRepo.findAll();
-    return jadwal;
+  async findAll({ page = 1, limit = 10, hari, sortBy, sortOrder } = {}) {
+    const filter = hari !== undefined ? { hari } : undefined;
+
+    const sort = sortBy !== undefined ? { sortBy, sortOrder: sortOrder ?? 'asc' } : undefined;
+
+    return await jadwalRepo.findAll({ page, limit, filter, sort });
   },
 
   async findById(id) {

@@ -1,7 +1,11 @@
 import { jadwalService } from '../services/jadwal.service.js';
 import { AppError } from '../errors/AppError.js';
 import { ErrorCodes } from '../errors/error-codes.js';
-import { jadwalSchema, updateJadwalSchema } from '../validators/jadwal.schema.js';
+import {
+  jadwalSchema,
+  updateJadwalSchema,
+  jadwalPaginationSchema,
+} from '../validators/jadwal.schema.js';
 import { sendCreated, sendNoContent, sendSuccess } from '../utils/http-response.js';
 
 export const jadwalController = {
@@ -15,8 +19,23 @@ export const jadwalController = {
   },
 
   async findAll(req, res) {
-    const jadwal = await jadwalService.findAll();
-    return sendSuccess(res, { jadwal });
+    const parsed = jadwalPaginationSchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new AppError(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        'Invalid pagination query',
+        parsed.error.flatten(),
+      );
+    }
+
+    const { page, limit } = parsed.data;
+    const { items, total } = await jadwalService.findAll(parsed.data);
+
+    return sendSuccess(res, {
+      jadwal: items,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   },
 
   async findById(req, res) {

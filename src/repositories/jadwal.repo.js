@@ -1,5 +1,6 @@
 import { prisma } from '../db/client.js';
 import { getOrSet, invalidateCache } from '../cache/helper.js';
+import { getVersion, bumpVersion } from '../cache/version.js';
 
 const include = {
   guru: {
@@ -19,8 +20,42 @@ const include = {
 };
 
 export const jadwalRepo = {
-  async findAll() {
-    return await getOrSet('jadwal:all', () => prisma.jadwal.findMany({ include }), 600);
+  async findAll({ page, limit, filter, sort }) {
+    const version = await getVersion('jadwal');
+
+    const filterPart = filter?.hari ? `hari-${filter.hari}` : 'no-filter';
+    const sortPart = sort?.sortBy ? `sortBy-${sort.sortBy}-sortOrder-${sort.sortOrder}` : 'no-sort';
+
+    const cacheKey = `jadwal:v${version}:p${page}:l${limit}:${filterPart}:${sortPart}`;
+
+    return await getOrSet(
+      cacheKey,
+      async () => {
+        const where = {};
+        if (filter?.hari) where.hari = filter.hari;
+
+        const orderBy = {};
+        if (sort?.sortBy) {
+          orderBy[sort.sortBy] = sort.sortOrder === 'desc' ? 'desc' : 'asc';
+        } else {
+          orderBy.jamMulai = 'asc';
+        }
+
+        const [items, total] = await Promise.all([
+          prisma.jadwal.findMany({
+            where,
+            orderBy,
+            skip: (page - 1) * limit,
+            take: limit,
+            include,
+          }),
+          prisma.jadwal.count({ where }),
+        ]);
+
+        return { items, total };
+      },
+      600,
+    );
   },
 
   async findById(id) {
@@ -47,18 +82,18 @@ export const jadwalRepo = {
 
   async create(data) {
     const result = await prisma.jadwal.create({ data, include });
-    await invalidateCache('jadwal:all');
+    await bumpVersion('jadwal');
     return result;
   },
 
   async updateById(id, data) {
     const result = await prisma.jadwal.update({ where: { id }, data, include });
-    await Promise.all([invalidateCache('jadwal:all'), invalidateCache(`jadwal:${id}`)]);
+    await Promise.all([invalidateCache(`jadwal:${id}`), bumpVersion('jadwal')]);
     return result;
   },
 
   async deleteById(id) {
     await prisma.jadwal.delete({ where: { id } });
-    await Promise.all([invalidateCache(`jadwal:${id}`), invalidateCache('jadwal:all')]);
+    await Promise.all([invalidateCache(`jadwal:${id}`), bumpVersion('jadwal')]);
   },
 };

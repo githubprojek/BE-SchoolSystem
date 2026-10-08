@@ -116,9 +116,7 @@ describe('Jadwal API', { concurrency: false }, () => {
   });
 
   it('GET /api/v1/jadwal - returns all schedules', async () => {
-    const res = await request
-      .get('/api/v1/jadwal')
-      .set('Authorization', `Bearer ${adminToken}`);
+    const res = await request.get('/api/v1/jadwal').set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
     assert.ok(Array.isArray(res.body.data.jadwal));
@@ -126,9 +124,7 @@ describe('Jadwal API', { concurrency: false }, () => {
   });
 
   it('GET /api/v1/jadwal/:id - returns schedule by id', async () => {
-    const list = await request
-      .get('/api/v1/jadwal')
-      .set('Authorization', `Bearer ${adminToken}`);
+    const list = await request.get('/api/v1/jadwal').set('Authorization', `Bearer ${adminToken}`);
     const jadwalId = list.body.data.jadwal[0].id;
 
     const res = await request
@@ -159,9 +155,7 @@ describe('Jadwal API', { concurrency: false }, () => {
   });
 
   it('PATCH /api/v1/jadwal/:id - updates schedule (admin)', async () => {
-    const list = await request
-      .get('/api/v1/jadwal')
-      .set('Authorization', `Bearer ${adminToken}`);
+    const list = await request.get('/api/v1/jadwal').set('Authorization', `Bearer ${adminToken}`);
     const jadwalId = list.body.data.jadwal[0].id;
 
     const res = await request
@@ -175,9 +169,7 @@ describe('Jadwal API', { concurrency: false }, () => {
   });
 
   it('DELETE /api/v1/jadwal/:id - deletes schedule (admin)', async () => {
-    const list = await request
-      .get('/api/v1/jadwal')
-      .set('Authorization', `Bearer ${adminToken}`);
+    const list = await request.get('/api/v1/jadwal').set('Authorization', `Bearer ${adminToken}`);
     const jadwalId = list.body.data.jadwal[0].id;
 
     const res = await request
@@ -185,5 +177,75 @@ describe('Jadwal API', { concurrency: false }, () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 204);
+  });
+
+  it('GET /api/v1/jadwal - default pagination returns meta', async () => {
+    const res = await request.get('/api/v1/jadwal').set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body.data.meta, { page: 1, limit: 10, total: 0, totalPages: 0 });
+    assert.equal(res.body.data.jadwal.length, 0);
+  });
+
+  it('GET /api/v1/jadwal?hari=senin - filter by day', async () => {
+    await request.post('/api/v1/jadwal').set('Authorization', `Bearer ${adminToken}`).send({
+      guruId,
+      muridId,
+      mataPelajaranId: mapelId,
+      kelasId,
+      hari: 'senin',
+      jamMulai: '07:00',
+      jamSelesai: '08:40',
+    });
+
+    const res = await request
+      .get('/api/v1/jadwal?hari=senin')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.jadwal.length, 1);
+    assert.equal(res.body.data.jadwal[0].hari, 'senin');
+    assert.equal(res.body.data.meta.total, 1);
+  });
+
+  it('GET /api/v1/jadwal - sorted by jamMulai asc by default', async () => {
+    await request.post('/api/v1/jadwal').set('Authorization', `Bearer ${adminToken}`).send({
+      guruId,
+      muridId,
+      mataPelajaranId: mapelId,
+      kelasId,
+      hari: 'selasa',
+      jamMulai: '06:00',
+      jamSelesai: '07:00',
+    });
+
+    const res = await request.get('/api/v1/jadwal').set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.jadwal.length, 2);
+    assert.equal(res.body.data.jadwal[0].jamMulai, 360);
+    assert.equal(res.body.data.jadwal[1].jamMulai, 420);
+    assert.equal(res.body.data.meta.total, 2);
+  });
+
+  it('GET /api/v1/jadwal?sortBy=jamMulai&sortOrder=desc - sort descending', async () => {
+    const res = await request
+      .get('/api/v1/jadwal?sortBy=jamMulai&sortOrder=desc')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.jadwal[0].jamMulai, 420);
+    assert.equal(res.body.data.jadwal[1].jamMulai, 360);
+  });
+
+  it('GET /api/v1/jadwal - invalid query returns 400', async () => {
+    for (const qs of ['hari=minggu', 'sortBy=hari', 'page=0', 'limit=101']) {
+      const res = await request
+        .get(`/api/v1/jadwal?${qs}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(res.status, 400, qs);
+      assert.equal(res.body.error.code, 'VALIDATION_ERROR', qs);
+    }
   });
 });

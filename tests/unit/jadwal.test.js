@@ -65,14 +65,14 @@ describe('Jadwal tests', { concurrency: false }, () => {
   });
 
   describe('findAll', async () => {
-    it('Return All jadwal', async () => {
-      mock.method(jadwalRepo, 'findAll', async () => [mockJadwal]);
+    it('Return paginated jadwal', async () => {
+      mock.method(jadwalRepo, 'findAll', async () => ({ items: [mockJadwal], total: 1 }));
       const result = await jadwalService.findAll();
-      assert.equal(result.length, 1);
-      assert.equal(result[0].guruId, guruId);
+      assert.equal(result.items.length, 1);
+      assert.equal(result.items[0].guruId, guruId);
+      assert.equal(result.total, 1);
     });
   });
-
   describe('findById', async () => {
     it('Return jadwal when found', async () => {
       mock.method(jadwalRepo, 'findById', () => mockJadwal);
