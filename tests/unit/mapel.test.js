@@ -47,11 +47,64 @@ describe('mataPelajaran test', { concurrency: false }, () => {
 
   describe('findAll', async () => {
     it('Find all', async () => {
-      mock.method(mapelRepo, 'findAll', async () => [mockMapel]);
+      mock.method(mapelRepo, 'findAll', async () => ({ items: [mockMapel], total: 1 }));
       const result = await mapelService.findAll();
 
-      assert.equal(result.length, 1);
-      assert.equal(result[0].nama, 'Matematika');
+      assert.equal(result.items.length, 1);
+      assert.equal(result.total, 1);
+    });
+
+    it('Default pagination, no filter and no sort', async () => {
+      let received;
+      mock.method(mapelRepo, 'findAll', async (args) => {
+        received = args;
+        return { items: [], total: 0 };
+      });
+
+      await mapelService.findAll();
+
+      assert.equal(received.page, 1);
+      assert.equal(received.limit, 10);
+      assert.equal(received.filter, undefined);
+      assert.equal(received.sort, undefined);
+    });
+
+    it('Maps flat query params to nested filter and sort', async () => {
+      let received;
+      mock.method(mapelRepo, 'findAll', async (args) => {
+        received = args;
+        return { items: [], total: 0 };
+      });
+
+      await mapelService.findAll({
+        page: 2,
+        limit: 5,
+        nama: 'mate',
+        kode: 'mtk',
+        sortBy: 'kode',
+        sortOrder: 'desc',
+      });
+
+      assert.equal(received.page, 2);
+      assert.equal(received.limit, 5);
+      assert.equal(received.filter.nama, 'mate');
+      assert.equal(received.filter.kode, 'mtk');
+      assert.equal(received.sort.sortBy, 'kode');
+      assert.equal(received.sort.sortOrder, 'desc');
+    });
+
+    it('Defaults sortOrder to asc when only sortBy given', async () => {
+      let received;
+      mock.method(mapelRepo, 'findAll', async (args) => {
+        received = args;
+        return { items: [], total: 0 };
+      });
+
+      await mapelService.findAll({ sortBy: 'nama' });
+
+      assert.equal(received.sort.sortBy, 'nama');
+      assert.equal(received.sort.sortOrder, 'asc');
+      assert.equal(received.filter, undefined);
     });
   });
 

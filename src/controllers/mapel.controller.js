@@ -2,7 +2,7 @@ import { AppError } from '../errors/AppError.js';
 import { ErrorCodes } from '../errors/error-codes.js';
 import { mapelService } from '../services/mapel.service.js';
 import { sendCreated, sendNoContent, sendSuccess } from '../utils/http-response.js';
-import { createSchema, updateSchema } from '../validators/mapel.schema.js';
+import { createSchema, updateSchema, mapelPaginationSchema } from '../validators/mapel.schema.js';
 
 export const mapelController = {
   async create(req, res) {
@@ -20,8 +20,23 @@ export const mapelController = {
   },
 
   async findAll(req, res) {
-    const mapel = await mapelService.findAll();
-    return sendSuccess(res, { mapel });
+    const parsed = mapelPaginationSchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new AppError(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        'Invalid pagination query',
+        parsed.error.flatten(),
+      );
+    }
+
+    const { page, limit } = parsed.data;
+    const { items, total } = await mapelService.findAll(parsed.data);
+
+    return sendSuccess(res, {
+      mapel: items,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   },
 
   async updateById(req, res) {

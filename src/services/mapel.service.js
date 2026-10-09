@@ -11,8 +11,12 @@ export const mapelService = {
     return await mapelRepo.create(data);
   },
 
-  async findAll() {
-    return await mapelRepo.findAll();
+  async findAll({ page = 1, limit = 10, nama, kode, sortBy, sortOrder } = {}) {
+    const filter = nama !== undefined || kode !== undefined ? { nama, kode } : undefined;
+
+    const sort = sortBy !== undefined ? { sortBy, sortOrder: sortOrder ?? 'asc' } : undefined;
+
+    return await mapelRepo.findAll({ page, limit, filter, sort });
   },
 
   async findById(id) {

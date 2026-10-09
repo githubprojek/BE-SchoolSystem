@@ -119,4 +119,96 @@ describe('Mapel API', { concurrency: false }, () => {
 
     assert.equal(res.status, 204);
   });
+
+  it('GET /api/v1/mapel - default pagination returns meta', async () => {
+    const res = await request.get('/api/v1/mapel').set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body.data.meta, { page: 1, limit: 10, total: 0, totalPages: 0 });
+    assert.equal(res.body.data.mapel.length, 0);
+  });
+
+  it('GET /api/v1/mapel?limit=2 - paginates result', async () => {
+    await request
+      .post('/api/v1/mapel')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ nama: 'Matematika', kode: 'MTK' });
+    await request
+      .post('/api/v1/mapel')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ nama: 'Bahasa Indonesia', kode: 'BINDO' });
+    await request
+      .post('/api/v1/mapel')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ nama: 'IPA Terpadu', kode: 'IPA' });
+
+    const res = await request
+      .get('/api/v1/mapel?limit=2')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.mapel.length, 2);
+    assert.deepEqual(res.body.data.meta, { page: 1, limit: 2, total: 3, totalPages: 2 });
+
+    const page2 = await request
+      .get('/api/v1/mapel?limit=2&page=2')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(page2.body.data.mapel.length, 1);
+    assert.equal(page2.body.data.meta.page, 2);
+  });
+
+  it('GET /api/v1/mapel - sorted by nama asc by default', async () => {
+    const res = await request.get('/api/v1/mapel').set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.mapel.length, 3);
+    assert.equal(res.body.data.mapel[0].nama, 'Bahasa Indonesia');
+    assert.equal(res.body.data.mapel[1].nama, 'IPA Terpadu');
+    assert.equal(res.body.data.mapel[2].nama, 'Matematika');
+  });
+
+  it('GET /api/v1/mapel?nama=mate - filter by name (case-insensitive)', async () => {
+    const res = await request
+      .get('/api/v1/mapel?nama=mate')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.mapel.length, 1);
+    assert.equal(res.body.data.mapel[0].kode, 'MTK');
+    assert.equal(res.body.data.meta.total, 1);
+  });
+
+  it('GET /api/v1/mapel?kode=ind - filter by code', async () => {
+    const res = await request
+      .get('/api/v1/mapel?kode=ind')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.mapel.length, 1);
+    assert.equal(res.body.data.mapel[0].kode, 'BINDO');
+    assert.equal(res.body.data.meta.total, 1);
+  });
+
+  it('GET /api/v1/mapel?sortBy=kode&sortOrder=desc - sort descending', async () => {
+    const res = await request
+      .get('/api/v1/mapel?sortBy=kode&sortOrder=desc')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.mapel[0].kode, 'MTK');
+    assert.equal(res.body.data.mapel[1].kode, 'IPA');
+    assert.equal(res.body.data.mapel[2].kode, 'BINDO');
+  });
+
+  it('GET /api/v1/mapel - invalid query returns 400', async () => {
+    for (const qs of ['page=0', 'limit=101', 'sortBy=unknown', 'sortOrder=up']) {
+      const res = await request
+        .get(`/api/v1/mapel?${qs}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(res.status, 400, qs);
+      assert.equal(res.body.error.code, 'VALIDATION_ERROR', qs);
+    }
+  });
 });
