@@ -11,7 +11,10 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
+  LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   REDIS_URL: z.string().optional(),
+  CORS_ORIGINS: z.string().optional(),
 });
 
 export function parseEnv(env) {

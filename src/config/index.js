@@ -22,6 +22,17 @@ export const config = Object.freeze({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
     max: env.RATE_LIMIT_MAX,
   },
+  loginRateLimit: {
+    windowMs: env.LOGIN_RATE_LIMIT_WINDOW_MS,
+    max: env.LOGIN_RATE_LIMIT_MAX,
+  },
+  cors: {
+    origins: env.CORS_ORIGINS
+      ? env.CORS_ORIGINS.split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean)
+      : null,
+  },
   redis: {
     url: env.REDIS_URL,
   },
