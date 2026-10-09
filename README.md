@@ -12,6 +12,7 @@ Backend API untuk Sistem Informasi Sekolah. Dibangun dengan Node.js, Express, Pr
 - [Menjalankan Test](#menjalankan-test)
 - [Struktur Project](#struktur-project)
 - [Fitur Utama](#fitur-utama)
+- [Pagination, Filtering & Sorting](#pagination-filtering--sorting)
 - [API Endpoints](#api-endpoints)
 - [Alur Refresh Token](#alur-refresh-token)
 - [Kontribusi](#kontribusi)
@@ -22,7 +23,7 @@ Pastikan perangkat kamu sudah terinstal:
 
 - **Node.js** v20 atau lebih baru
 - **PostgreSQL** v14+
-- **Redis** v6+ (untuk caching)
+- **Redis** v6+ (untuk caching — dev & test memakai **instance terpisah**, lihat [Menjalankan Test](#menjalankan-test))
 - **npm** v9+
 - **Git**
 
@@ -49,8 +50,6 @@ cp .env.example .env
 
 Lalu isi variabel berikut di `.env`:
 
-② Tabel Environment (baris 51–57) — ganti seluruh blok
-
 | Variabel                 | Keterangan                                                                    | Contoh                                               |
 | ------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `DATABASE_URL`           | URL koneksi PostgreSQL                                                        | `postgresql://user:pass@localhost:5432/schoolsystem` |
@@ -58,18 +57,31 @@ Lalu isi variabel berikut di `.env`:
 | `JWT_EXPIRES_IN`         | Masa berlaku access token                                                     | `15m`                                                |
 | `JWT_REFRESH_SECRET`     | Secret **terpisah** untuk refresh token (wajib, app gagal start kalau kosong) | `openssl rand -hex 32`                               |
 | `JWT_REFRESH_EXPIRES_IN` | Masa berlaku refresh token                                                    | `7d`                                                 |
-| `REDIS_URL`              | URL koneksi Redis (opsional)                                                  | `redis://localhost:6379`                             |
+| `REDIS_URL`              | URL koneksi Redis (opsional — **dev & test wajib beda instance**)             | `redis://localhost:6379`                             |
 | `PORT`                   | Port server                                                                   | `3000`                                               |
 
 > Generate secret acak: `openssl rand -hex 32`. **Jangan pakai `JWT_SECRET` yang sama** untuk refresh token.
+
+Untuk menjalankan test, buat juga `.env.test` lalu sesuaikan isinya:
+
+```bash
+cp .env.example .env.test
+```
+
+> **`.env.test` harus menunjuk ke database test dan Redis test yang terpisah:**
+>
+> ```bash
+> DATABASE_URL=postgresql://user:pass@localhost:5432/db_test
+> REDIS_URL=redis://localhost:6380
+> ```
+>
+> Jangan pakai Redis yang sama untuk dev & test — lihat [Menjalankan Test](#menjalankan-test).
 
 ## Setup Database
 
 Jalankan migrasi Prisma untuk membuat tabel-tabel di database:
 
-Jalankan migrasi Prisma untuk membuat tabel-tabel di database:
-
-````bash
+```bash
 # Development: generate migrasi + apply ke DB dev (.env)
 npm run db:migrate
 
@@ -78,14 +90,15 @@ npm run db:migrate:test
 
 # Sekaligus keduanya (paling sering dipakai)
 npm run db:migrate:all
-Catatan: setiap kali prisma/schema.prisma diubah, jalankan npm run db:migrate:all
-agar DB dev dan DB test ikut ter-update.
+```
+
+Catatan: setiap kali `prisma/schema.prisma` diubah, jalankan `npm run db:migrate:all` agar DB dev dan DB test ikut ter-update.
 
 Opsional: isi data awal (seed):
 
 ```bash
 npm run db:seed
-````
+```
 
 ## Menjalankan Aplikasi
 
@@ -111,6 +124,25 @@ npm run test:unit
 # Integration test saja
 npm run test:int
 ```
+
+> **Penting — pakai Redis terpisah untuk test.**
+>
+> Integration test menulis cache ke Redis yang **berbeda** dari yang dipakai dev (`REDIS_URL` di `.env.test`, default port `6380`). Pastikan instance Redis test sudah berjalan sebelum menjalankan test.
+>
+> **Jangan** memakai satu Redis untuk dev dan test: cached response bisa bocor antar environment — API dev akan mengembalikan data test (atau sebaliknya) sampai cache kedaluwarsa (TTL 600 detik). Contoh pemisahan di `docker-compose.yml`:
+>
+> ```yaml
+> services:
+>   redis-dev: # untuk .env (port 6379)
+>     image: redis:alpine
+>     ports:
+>       - "6379:6379"
+>
+>   redis-test: # untuk .env.test (port 6380)
+>     image: redis:alpine
+>     ports:
+>       - "6380:6379"
+> ```
 
 ## Struktur Project
 
@@ -182,7 +214,58 @@ BE-SchoolSystem/
 ### 7. Caching dengan Redis
 
 - Hasil query (list data) di-cache di Redis untuk mempercepat response
-- Cache otomatis di-invalidate saat data berubah
+- Cache otomatis di-invalidate saat data berubah (cache key berversi per resource)
+- Cache dev & test memakai Redis instance yang terpisah
+
+## Pagination, Filtering & Sorting
+
+Semua endpoint daftar (list) mendukung pagination, filtering, dan sorting lewat query parameter.
+
+### Parameter Umum
+
+| Param       | Tipe    | Default | Keterangan                              |
+| ----------- | ------- | ------- | --------------------------------------- |
+| `page`      | integer | `1`     | Nomor halaman (min. 1)                  |
+| `limit`     | integer | `10`    | Jumlah data per halaman (1–100)         |
+| `sortBy`    | enum    | —       | Field urutan (sesuai endpoint, lihat bawah) |
+| `sortOrder` | enum    | —       | `asc` atau `desc`                       |
+
+> **`sortOrder` wajib ditemani `sortBy`** — jika `sortOrder` dikirim tanpa `sortBy`, urutan default endpoint yang dipakai (keduanya diabaikan).
+
+### Response
+
+Setiap endpoint list mengembalikan `meta` di samping data:
+
+```json
+{
+  "success": true,
+  "data": {
+    "mapel": [],
+    "meta": { "page": 1, "limit": 10, "total": 5, "totalPages": 1 }
+  }
+}
+```
+
+### Filter & Sort per Endpoint
+
+| Endpoint         | Filter                                                      | `sortBy`                                | Urutan default |
+| ---------------- | ----------------------------------------------------------- | --------------------------------------- | -------------- |
+| `/api/v1/mapel`  | `nama`, `kode` (contains, case-insensitive)                 | `nama`, `kode`, `createdAt`             | `nama asc`     |
+| `/api/v1/kelas`  | `nama` (contains), `tingkat` (exact)                        | `nama`, `tingkat`                       | `nama asc`     |
+| `/api/v1/absen`  | `status` (exact: `hadir`/`sakit`/`alpha`/`izin`)            | `tanggal`, `status`, `createdAt`        | `tanggal desc` |
+| `/api/v1/jadwal` | `hari` (exact)                                              | `jamMulai`, `jamSelesai`, `createdAt`   | `jamMulai asc` |
+| `/api/v1/nilai`  | `tipe`, `mataPelajaranId`, `tahunAjaran`, `semester`        | `nilai`, `semester`, `createdAt`        | `nilai desc`   |
+| `/api/v1/users`  | `role`, `nama`, `email` (contains)                          | `nama`, `role`, `createdAt`             | `nama asc`     |
+
+Contoh pemakaian:
+
+```bash
+GET /api/v1/nilai?tipe=UTS&sortBy=nilai&sortOrder=desc&limit=5&page=1
+GET /api/v1/users?role=guru&sortBy=nama&sortOrder=asc
+GET /api/v1/mapel?nama=mate&limit=1
+```
+
+Query tidak valid (`page=0`, `limit=101`, `sortBy` di luar enum, nilai enum salah) → `400 VALIDATION_ERROR`.
 
 ## API Endpoints
 
@@ -190,15 +273,39 @@ BE-SchoolSystem/
 | ------ | --------------------- | ------------- | ---------------------------------------------- |
 | POST   | `/api/v1/register`    | Public        | Registrasi user                                |
 | POST   | `/api/v1/login`       | Public        | Login                                          |
-| GET    | `/api/v1/me`          | Semua         | Lihat profil                                   |
-| PATCH  | `/api/v1/me`          | Semua         | Update profil                                  |
-| GET    | `/api/v1/users`       | Admin/Guru    | Daftar user                                    |
-| GET    | `/api/v1/jadwal`      | Authenticated | Daftar jadwal                                  |
-| POST   | `/api/v1/jadwal`      | Admin         | Buat jadwal                                    |
-| GET    | `/api/v1/jadwal-saya` | Guru/Murid    | Jadwal saya                                    |
-| POST   | `/api/v1/absen`       | Admin/Guru    | Buat absensi                                   |
-| GET    | `/api/v1/absen`       | Authenticated | Daftar absensi                                 |
-| POST   | `/api/v1/nilai`       | Admin/Guru    | Input nilai                                    |
-| GET    | `/api/v1/nilai`       | Authenticated | Daftar nilai                                   |
 | POST   | `/api/v1/refresh`     | Public        | Tukar refresh token dengan pasangan token baru |
 | POST   | `/api/v1/logout`      | Public        | Cabut refresh token (logout)                   |
+| GET    | `/api/v1/me`          | Semua         | Lihat profil                                   |
+| PATCH  | `/api/v1/me`          | Semua         | Update profil                                  |
+| GET    | `/api/v1/users`       | Admin/Guru    | Daftar user (paginasi/filter/sort)             |
+| GET    | `/api/v1/users/:id`   | Admin         | Detail user                                    |
+| PATCH  | `/api/v1/users/:id`   | Admin         | Update user                                    |
+| DELETE | `/api/v1/users/:id`   | Admin         | Hapus user                                     |
+| GET    | `/api/v1/kelas`       | Admin/Guru    | Daftar kelas (paginasi/filter/sort)            |
+| POST   | `/api/v1/kelas`       | Admin         | Buat kelas                                     |
+| GET    | `/api/v1/kelas/:id`   | Admin/Guru    | Detail kelas                                   |
+| PATCH  | `/api/v1/kelas/:id`   | Admin         | Update kelas                                   |
+| DELETE | `/api/v1/kelas/:id`   | Admin         | Hapus kelas                                    |
+| GET    | `/api/v1/mapel`       | Authenticated | Daftar mata pelajaran (paginasi/filter/sort)   |
+| POST   | `/api/v1/mapel`       | Admin         | Buat mata pelajaran                            |
+| GET    | `/api/v1/mapel/:id`   | Authenticated | Detail mata pelajaran                          |
+| PATCH  | `/api/v1/mapel/:id`   | Admin         | Update mata pelajaran                          |
+| DELETE | `/api/v1/mapel/:id`   | Admin         | Hapus mata pelajaran                           |
+| GET    | `/api/v1/jadwal`      | Authenticated | Daftar jadwal (paginasi/filter/sort)           |
+| POST   | `/api/v1/jadwal`      | Admin         | Buat jadwal                                    |
+| GET    | `/api/v1/jadwal-saya` | Guru/Murid    | Jadwal saya                                    |
+| GET    | `/api/v1/jadwal/:id`  | Authenticated | Detail jadwal                                  |
+| PATCH  | `/api/v1/jadwal/:id`  | Admin         | Update jadwal                                  |
+| DELETE | `/api/v1/jadwal/:id`  | Admin         | Hapus jadwal                                   |
+| GET    | `/api/v1/absen`       | Authenticated | Daftar absensi (paginasi/filter/sort)          |
+| POST   | `/api/v1/absen`       | Admin/Guru    | Buat absensi                                   |
+| GET    | `/api/v1/absen/:id`   | Authenticated | Detail absensi                                 |
+| PATCH  | `/api/v1/absen/:id`   | Admin/Guru    | Update absensi                                 |
+| DELETE | `/api/v1/absen/:id`   | Admin         | Hapus absensi                                  |
+| GET    | `/api/v1/nilai`       | Authenticated | Daftar nilai (paginasi/filter/sort)            |
+| POST   | `/api/v1/nilai`       | Admin/Guru    | Input nilai                                    |
+| GET    | `/api/v1/nilai/:id`   | Authenticated | Detail nilai                                   |
+| PATCH  | `/api/v1/nilai/:id`   | Admin/Guru    | Update nilai                                   |
+| DELETE | `/api/v1/nilai/:id`   | Admin/Guru    | Hapus nilai                                    |
+
+> Endpoint **daftar** mendukung pagination, filtering, dan sorting — lihat [Pagination, Filtering & Sorting](#pagination-filtering--sorting).
