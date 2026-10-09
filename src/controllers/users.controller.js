@@ -3,12 +3,18 @@ import {
   createUserSchema,
   loginSchema,
   updateUserSchema,
+  updateMeSchema,
   refreshTokenSchema,
   usersPaginationSchema,
 } from '../validators/users.schema.js';
 import { sendSuccess, sendCreated, sendNoContent } from '../utils/http-response.js';
 import { AppError } from '../errors/AppError.js';
 import { ErrorCodes } from '../errors/error-codes.js';
+import {
+  assertLoginAllowed,
+  recordLoginFailure,
+  clearLoginFailures,
+} from '../middlewares/login-rate.js';
 
 export const usersController = {
   async register(req, res) {
@@ -27,8 +33,20 @@ export const usersController = {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid input', parsed.error.flatten());
     }
 
-    const result = await userService.login(parsed.data);
-    return sendSuccess(res, result);
+    const { email } = parsed.data;
+
+    await assertLoginAllowed(req.ip, email);
+
+    try {
+      const result = await userService.login(parsed.data);
+      await clearLoginFailures(req.ip, email);
+      return sendSuccess(res, result);
+    } catch (err) {
+      if (err instanceof AppError && err.statusCode === 400) {
+        await recordLoginFailure(req.ip, email);
+      }
+      throw err;
+    }
   },
 
   async findAll(req, res) {
@@ -62,7 +80,7 @@ export const usersController = {
   },
 
   async updateProfile(req, res) {
-    const parsed = updateUserSchema.safeParse(req.body);
+    const parsed = updateMeSchema.safeParse(req.body);
     if (!parsed.success) {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid input', parsed.error.flatten());
     }

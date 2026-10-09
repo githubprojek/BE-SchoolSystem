@@ -24,6 +24,14 @@ export const refreshTokenSchema = z.object({
 
 export const updateUserSchema = createUserSchema.partial();
 
+export const updateMeSchema = updateUserSchema.omit({
+  role: true,
+  nis: true,
+  nip: true,
+  kelasId: true,
+  mataPelajaranId: true,
+});
+
 export const usersPaginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
