@@ -8,7 +8,7 @@
     "start": "node --env-file-if-exists=.env src/app/server.js",
     "lint": "eslint src/",
     "format": "prettier --write src/",
-    "test": "node --env-file-if-exists=.env.test --experimental-test-coverage --test",
+    "test": "node --env-file-if-exists=.env.test --test-concurrency=1 --experimental-test-coverage --test-force-exit --test",
     "test:unit": "node --env-file-if-exists=.env.test --test-force-exit --test ./tests/unit/**/*.test.js",
     "test:int": "node --env-file-if-exists=.env.test --test-concurrency=1 --experimental-test-coverage --test-force-exit --test ./tests/integration/**/*.test.js",
    "db:migrate": "npx prisma migrate dev",

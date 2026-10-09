@@ -187,6 +187,33 @@ describe('Users API', { concurrency: false }, () => {
 
       assert.equal(res.status, 400);
     });
+
+    it('POST /api/v1/login - 429 after repeated failed attempts (security fix #3)', async () => {
+      let last;
+      for (let i = 0; i < 6; i++) {
+        last = await request.post('/api/v1/login').send({
+          email: 'brute@test.com',
+          password: 'wrongpassword',
+        });
+      }
+
+      assert.equal(last.status, 429);
+      assert.equal(last.body.error.code, 'RATE_LIMITED');
+    });
+
+    it('POST /api/v1/login - counter gagal direset saat login sukses (security fix #3)', async () => {
+      const login = (password) =>
+        request.post('/api/v1/login').send({ email: 'guru@test.com', password });
+
+      for (let i = 0; i < 4; i++) {
+        assert.equal((await login('wrongpassword')).status, 400);
+      }
+
+      assert.equal((await login('password123')).status, 200);
+
+      assert.equal((await login('wrongpassword')).status, 400);
+      assert.equal((await login('wrongpassword')).status, 400);
+    });
   });
 
   describe('Profile', () => {
@@ -220,14 +247,31 @@ describe('Users API', { concurrency: false }, () => {
       assert.equal(res.body.data.user.nama, 'Budi Updated');
     });
 
-    
+    it('PATCH /api/v1/me - cannot escalate own role (security fix #1)', async () => {
+      const res = await request
+        .patch('/api/v1/me')
+        .set('Authorization', `Bearer ${guruToken}`)
+        .send({
+          nama: 'Budi Updated',
+          role: 'admin',
+          nip: 111111,
+          kelasId,
+          mataPelajaranId: mapelId,
+        });
+
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data.user.role, 'guru');
+      assert.equal(res.body.data.user.nip, 999999);
+
+      const me = await request.get('/api/v1/me').set('Authorization', `Bearer ${guruToken}`);
+      assert.equal(me.body.data.user.role, 'guru');
+      assert.equal(me.body.data.user.nip, 999999);
+    });
   });
 
   describe('Admin: Users list', () => {
     it('GET /api/v1/users - returns all users (admin)', async () => {
-      const res = await request
-        .get('/api/v1/users')
-        .set('Authorization', `Bearer ${adminToken}`);
+      const res = await request.get('/api/v1/users').set('Authorization', `Bearer ${adminToken}`);
 
       assert.equal(res.status, 200);
       assert.ok(res.body.data.user !== undefined);
@@ -364,7 +408,9 @@ describe('Users API', { concurrency: false }, () => {
     });
 
     it('access token biasa masih valid setelah rotasi', async () => {
-      const res = await request.get('/api/v1/me').set('Authorization', `Bearer ${loginAccessToken}`);
+      const res = await request
+        .get('/api/v1/me')
+        .set('Authorization', `Bearer ${loginAccessToken}`);
 
       assert.equal(res.status, 200);
       assert.equal(res.body.data.user.email, 'guru@test.com');
@@ -392,7 +438,9 @@ describe('Users API', { concurrency: false }, () => {
     });
 
     it('POST /api/v1/refresh - 401 untuk token bukan JWT', async () => {
-      const res = await request.post('/api/v1/refresh').send({ refreshToken: 'bukan-jwt-sama-sekali' });
+      const res = await request
+        .post('/api/v1/refresh')
+        .send({ refreshToken: 'bukan-jwt-sama-sekali' });
 
       assert.equal(res.status, 401);
       assert.equal(res.body.error.code, 'UNAUTHORIZED');
@@ -451,7 +499,9 @@ describe('Users API', { concurrency: false }, () => {
         .send({ refreshToken: login.body.data.refreshToken });
       assert.equal(out.status, 204);
 
-      const res = await request.get('/api/v1/me').set('Authorization', `Bearer ${login.body.data.token}`);
+      const res = await request
+        .get('/api/v1/me')
+        .set('Authorization', `Bearer ${login.body.data.token}`);
       assert.equal(res.status, 200);
     });
   });
