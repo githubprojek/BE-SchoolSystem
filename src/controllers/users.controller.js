@@ -4,6 +4,7 @@ import {
   loginSchema,
   updateUserSchema,
   refreshTokenSchema,
+  usersPaginationSchema,
 } from '../validators/users.schema.js';
 import { sendSuccess, sendCreated, sendNoContent } from '../utils/http-response.js';
 import { AppError } from '../errors/AppError.js';
@@ -31,8 +32,23 @@ export const usersController = {
   },
 
   async findAll(req, res) {
-    const user = await userService.findAll();
-    return sendSuccess(res, { user });
+    const parsed = usersPaginationSchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new AppError(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        'Invalid pagination query',
+        parsed.error.flatten(),
+      );
+    }
+
+    const { page, limit } = parsed.data;
+    const { items, total } = await userService.findAll(parsed.data);
+
+    return sendSuccess(res, {
+      user: items,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   },
 
   async findById(req, res) {

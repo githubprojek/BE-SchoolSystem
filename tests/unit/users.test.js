@@ -253,12 +253,49 @@ describe('User tests', { concurrency: false }, () => {
         { id: '1', nama: 'Budi', email: 'budi@test.com' },
         { id: '2', nama: 'Siti', email: 'siti@test.com' },
       ];
-      mock.method(userRepo, 'findAll', async () => users);
+      mock.method(userRepo, 'findAll', async () => ({ items: users, total: 2 }));
 
       const result = await userService.findAll();
 
-      assert.equal(result.length, 2);
-      assert.equal(result[0].nama, 'Budi');
+      assert.equal(result.items.length, 2);
+      assert.equal(result.items[0].nama, 'Budi');
+      assert.equal(result.total, 2);
+    });
+
+    it('Default pagination, no filter and no sort', async () => {
+      let received;
+      mock.method(userRepo, 'findAll', async (args) => {
+        received = args;
+        return { items: [], total: 0 };
+      });
+
+      await userService.findAll();
+
+      assert.equal(received.page, 1);
+      assert.equal(received.limit, 10);
+      assert.equal(received.filter, undefined);
+      assert.equal(received.sort, undefined);
+    });
+
+    it('Maps flat query params to nested filter and sort', async () => {
+      let received;
+      mock.method(userRepo, 'findAll', async (args) => {
+        received = args;
+        return { items: [], total: 0 };
+      });
+
+      await userService.findAll({
+        role: 'guru',
+        nama: 'Budi',
+        email: 'test',
+        sortBy: 'nama',
+        sortOrder: 'desc',
+      });
+
+      assert.deepEqual(received.filter, { role: 'guru', nama: 'Budi', email: 'test' });
+      assert.deepEqual(received.sort, { sortBy: 'nama', sortOrder: 'desc' });
+      assert.equal(received.page, 1);
+      assert.equal(received.limit, 10);
     });
   });
 

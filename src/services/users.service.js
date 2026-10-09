@@ -159,9 +159,15 @@ export const userService = {
     await refreshTokenRepo.revoke(hashToken(refreshToken));
   },
 
-  async findAll() {
-    const user = await userRepo.findAll();
-    return user;
+  async findAll({ page = 1, limit = 10, role, nama, email, sortBy, sortOrder } = {}) {
+    const filter =
+      role !== undefined || nama !== undefined || email !== undefined
+        ? { role, nama, email }
+        : undefined;
+
+    const sort = sortBy !== undefined ? { sortBy, sortOrder: sortOrder ?? 'asc' } : undefined;
+
+    return await userRepo.findAll({ page, limit, filter, sort });
   },
 
   async getById(id) {

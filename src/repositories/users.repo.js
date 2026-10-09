@@ -1,4 +1,5 @@
 import { getOrSet, invalidateCache } from '../cache/helper.js';
+import { getVersion, bumpVersion } from '../cache/version.js';
 import { prisma } from '../db/client.js';
 
 const userSelect = {
@@ -15,8 +16,46 @@ const userSelect = {
 };
 
 export const userRepo = {
-  async findAll() {
-    return await getOrSet('user:all', () => prisma.user.findMany({ select: userSelect }), 600);
+  async findAll({ page, limit, filter, sort }) {
+    const version = await getVersion('user');
+
+    const filterPart = filter
+      ? `role-${filter.role ?? ''}:nama-${filter.nama ?? ''}:email-${filter.email ?? ''}`
+      : 'no-filter';
+    const sortPart = sort?.sortBy ? `sortBy-${sort.sortBy}-sortOrder-${sort.sortOrder}` : 'no-sort';
+
+    const cacheKey = `user:v${version}:p${page}:l${limit}:${filterPart}:${sortPart}`;
+
+    return await getOrSet(
+      cacheKey,
+      async () => {
+        const where = {};
+        if (filter?.role) where.role = filter.role;
+        if (filter?.nama) where.nama = { contains: filter.nama, mode: 'insensitive' };
+        if (filter?.email) where.email = { contains: filter.email, mode: 'insensitive' };
+
+        const orderBy = {};
+        if (sort?.sortBy) {
+          orderBy[sort.sortBy] = sort.sortOrder === 'desc' ? 'desc' : 'asc';
+        } else {
+          orderBy.nama = 'asc';
+        }
+
+        const [items, total] = await Promise.all([
+          prisma.user.findMany({
+            where,
+            orderBy,
+            skip: (page - 1) * limit,
+            take: limit,
+            select: userSelect,
+          }),
+          prisma.user.count({ where }),
+        ]);
+
+        return { items, total };
+      },
+      600,
+    );
   },
 
   async findById(id) {
@@ -33,18 +72,18 @@ export const userRepo = {
 
   async create(data) {
     const result = await prisma.user.create({ data });
-    await invalidateCache('user:all');
+    await bumpVersion('user');
     return result;
   },
 
   async updateById(id, data) {
     const result = await prisma.user.update({ where: { id }, data, select: userSelect });
-    await Promise.all([invalidateCache(`user:${id}`), invalidateCache('user:all')]);
+    await Promise.all([invalidateCache(`user:${id}`), bumpVersion('user')]);
     return result;
   },
 
   async deleteById(id) {
     await prisma.user.delete({ where: { id } });
-    await Promise.all([invalidateCache(`user:${id}`), invalidateCache('user:all')]);
+    await Promise.all([invalidateCache(`user:${id}`), bumpVersion('user')]);
   },
 };

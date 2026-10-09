@@ -238,6 +238,104 @@ describe('Users API', { concurrency: false }, () => {
 
       assert.equal(res.status, 401);
     });
+
+    it('GET /api/v1/users - default pagination returns meta', async () => {
+      const res = await request.get('/api/v1/users').set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data.user.length, 4);
+      assert.deepEqual(res.body.data.meta, { page: 1, limit: 10, total: 4, totalPages: 1 });
+    });
+
+    it('GET /api/v1/users?role=murid - filters users by role', async () => {
+      const res = await request
+        .get('/api/v1/users?role=murid')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data.user.length, 1);
+      assert.equal(res.body.data.user[0].nama, 'Murid Baru');
+      assert.equal(res.body.data.meta.total, 1);
+
+      const guru = await request
+        .get('/api/v1/users?role=guru')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(guru.body.data.user.length, 2);
+      assert.equal(guru.body.data.meta.total, 2);
+    });
+
+    it('GET /api/v1/users?nama=budi - filter by name (case-insensitive)', async () => {
+      const res = await request
+        .get('/api/v1/users?nama=budi')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data.user.length, 1);
+      assert.equal(res.body.data.user[0].nama, 'Budi Updated');
+      assert.equal(res.body.data.meta.total, 1);
+    });
+
+    it('GET /api/v1/users?email=guru2 - filter by email (case-insensitive)', async () => {
+      const res = await request
+        .get('/api/v1/users?email=guru2')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data.user.length, 1);
+      assert.equal(res.body.data.user[0].email, 'guru2@test.com');
+      assert.equal(res.body.data.meta.total, 1);
+    });
+
+    it('GET /api/v1/users?limit=1 - paginates result', async () => {
+      const res = await request
+        .get('/api/v1/users?limit=1')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data.user.length, 1);
+      assert.deepEqual(res.body.data.meta, { page: 1, limit: 1, total: 4, totalPages: 4 });
+
+      const page2 = await request
+        .get('/api/v1/users?limit=1&page=2')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(page2.body.data.user.length, 1);
+      assert.equal(page2.body.data.meta.page, 2);
+    });
+
+    it('GET /api/v1/users - sorted by nama asc by default', async () => {
+      const res = await request.get('/api/v1/users').set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(res.status, 200);
+      assert.deepEqual(
+        res.body.data.user.map((u) => u.nama),
+        ['Admin', 'Budi Updated', 'Guru Baru', 'Murid Baru'],
+      );
+    });
+
+    it('GET /api/v1/users?sortBy=nama&sortOrder=desc - sort descending', async () => {
+      const res = await request
+        .get('/api/v1/users?sortBy=nama&sortOrder=desc')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      assert.equal(res.status, 200);
+      assert.deepEqual(
+        res.body.data.user.map((u) => u.nama),
+        ['Murid Baru', 'Guru Baru', 'Budi Updated', 'Admin'],
+      );
+    });
+
+    it('GET /api/v1/users - invalid query returns 400', async () => {
+      for (const qs of ['page=0', 'limit=101', 'role=hacker', 'sortBy=unknown', 'sortOrder=up']) {
+        const res = await request
+          .get(`/api/v1/users?${qs}`)
+          .set('Authorization', `Bearer ${adminToken}`);
+
+        assert.equal(res.status, 400, qs);
+        assert.equal(res.body.error.code, 'VALIDATION_ERROR', qs);
+      }
+    });
   });
 
   describe('Refresh Token', () => {
