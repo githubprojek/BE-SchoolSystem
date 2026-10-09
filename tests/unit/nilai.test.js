@@ -52,9 +52,52 @@ describe('Nilai test', { concurrency: false }, () => {
 
   describe('findAll', async () => {
     it('Find all', async () => {
-      mock.method(nilaiRepo, 'findAll', async () => [mockNilai]);
+      mock.method(nilaiRepo, 'findAll', async () => ({ items: [mockNilai], total: 1 }));
       const result = await nilaiService.findAll();
-      assert.equal(result.length, 1);
+
+      assert.equal(result.items.length, 1);
+      assert.equal(result.total, 1);
+    });
+
+    it('Default pagination, no filter and no sort', async () => {
+      let received;
+      mock.method(nilaiRepo, 'findAll', async (args) => {
+        received = args;
+        return { items: [], total: 0 };
+      });
+
+      await nilaiService.findAll();
+
+      assert.equal(received.page, 1);
+      assert.equal(received.limit, 10);
+      assert.equal(received.filter, undefined);
+      assert.equal(received.sort, undefined);
+    });
+
+    it('Maps flat query params to nested filter and sort', async () => {
+      let received;
+      mock.method(nilaiRepo, 'findAll', async (args) => {
+        received = args;
+        return { items: [], total: 0 };
+      });
+
+      await nilaiService.findAll({
+        tipe: 'UTS',
+        mataPelajaranId: mapelId,
+        semester: 2,
+        sortBy: 'nilai',
+        sortOrder: 'asc',
+      });
+
+      assert.deepEqual(received.filter, {
+        tipe: 'UTS',
+        mataPelajaranId: mapelId,
+        tahunAjaran: undefined,
+        semester: 2,
+      });
+      assert.deepEqual(received.sort, { sortBy: 'nilai', sortOrder: 'asc' });
+      assert.equal(received.page, 1);
+      assert.equal(received.limit, 10);
     });
   });
 

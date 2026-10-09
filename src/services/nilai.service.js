@@ -7,8 +7,27 @@ export const nilaiService = {
     return await nilaiRepo.create(data);
   },
 
-  async findAll() {
-    return await nilaiRepo.findAll();
+  async findAll({
+    page = 1,
+    limit = 10,
+    tipe,
+    mataPelajaranId,
+    tahunAjaran,
+    semester,
+    sortBy,
+    sortOrder,
+  } = {}) {
+    const hasFilter =
+      tipe !== undefined ||
+      mataPelajaranId !== undefined ||
+      tahunAjaran !== undefined ||
+      semester !== undefined;
+
+    const filter = hasFilter ? { tipe, mataPelajaranId, tahunAjaran, semester } : undefined;
+
+    const sort = sortBy !== undefined ? { sortBy, sortOrder: sortOrder ?? 'desc' } : undefined;
+
+    return await nilaiRepo.findAll({ page, limit, filter, sort });
   },
 
   async findById(id) {

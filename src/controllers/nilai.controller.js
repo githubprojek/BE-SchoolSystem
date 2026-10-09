@@ -1,7 +1,7 @@
 import { ErrorCodes } from '../errors/error-codes.js';
 import { AppError } from '../errors/AppError.js';
 import { sendCreated, sendNoContent, sendSuccess } from '../utils/http-response.js';
-import { createSchema, updateSchema } from '../validators/nilai.schema.js';
+import { createSchema, updateSchema, nilaiPaginationSchema } from '../validators/nilai.schema.js';
 import { nilaiService } from '../services/nilai.service.js';
 
 export const nilaiController = {
@@ -15,8 +15,23 @@ export const nilaiController = {
   },
 
   async findAll(req, res) {
-    const nilai = await nilaiService.findAll();
-    return sendSuccess(res, { nilai });
+    const parsed = nilaiPaginationSchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new AppError(
+        400,
+        ErrorCodes.VALIDATION_ERROR,
+        'Invalid pagination query',
+        parsed.error.flatten(),
+      );
+    }
+
+    const { page, limit } = parsed.data;
+    const { items, total } = await nilaiService.findAll(parsed.data);
+
+    return sendSuccess(res, {
+      nilai: items,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   },
 
   async findById(req, res) {
