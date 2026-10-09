@@ -129,16 +129,47 @@ describe('Nilai test', { concurrency: false }, () => {
     it('Update nilai successfully', async () => {
       mock.method(nilaiRepo, 'findById', async () => mockNilai);
       mock.method(nilaiRepo, 'updateById', async () => ({ ...mockNilai, nilai: 20 }));
-      const result = await nilaiService.updateById(nilaiId, { nilai: 20 });
+      const result = await nilaiService.updateById(
+        nilaiId,
+        { nilai: 20 },
+        { id: guruId, role: 'guru' },
+      );
 
       assert.equal(result.nilai, 20);
+    });
+
+    it('return 403 when guru updates nilai owned by another guru', async () => {
+      mock.method(nilaiRepo, 'findById', async () => mockNilai);
+      mock.method(nilaiRepo, 'updateById', async () => mockNilai);
+
+      await assert.rejects(
+        () => nilaiService.updateById(nilaiId, { nilai: 20 }, { id: 'other-guru', role: 'guru' }),
+        (err) => {
+          assert(err instanceof AppError);
+          assert.equal(err.statusCode, 403);
+          assert.equal(err.code, 'FORBIDDEN');
+          return true;
+        },
+      );
+    });
+
+    it('allows admin to update any nilai', async () => {
+      mock.method(nilaiRepo, 'findById', async () => mockNilai);
+      mock.method(nilaiRepo, 'updateById', async () => ({ ...mockNilai, nilai: 50 }));
+
+      const result = await nilaiService.updateById(
+        nilaiId,
+        { nilai: 50 },
+        { id: 'admin-id', role: 'admin' },
+      );
+      assert.equal(result.nilai, 50);
     });
 
     it('Return 404 when nilaiId not found', async () => {
       mock.method(nilaiRepo, 'findById', async () => null);
 
       await assert.rejects(
-        () => nilaiService.updateById('nonExist', { nilai: 20 }),
+        () => nilaiService.updateById('nonExist', { nilai: 20 }, { id: guruId, role: 'guru' }),
         (err) => {
           assert(err instanceof AppError);
           assert.equal(err.statusCode, 404);
@@ -154,13 +185,30 @@ describe('Nilai test', { concurrency: false }, () => {
       mock.method(nilaiRepo, 'findById', async () => mockNilai);
       mock.method(nilaiRepo, 'deleteById', async () => mockNilai);
 
-      await assert.doesNotReject(nilaiService.deleteById(mockNilai._id));
+      await assert.doesNotReject(
+        nilaiService.deleteById(mockNilai._id, { id: guruId, role: 'guru' }),
+      );
+    });
+
+    it('return 403 when guru deletes nilai owned by another guru', async () => {
+      mock.method(nilaiRepo, 'findById', async () => mockNilai);
+      mock.method(nilaiRepo, 'deleteById', async () => mockNilai);
+
+      await assert.rejects(
+        () => nilaiService.deleteById(nilaiId, { id: 'other-guru', role: 'guru' }),
+        (err) => {
+          assert(err instanceof AppError);
+          assert.equal(err.statusCode, 403);
+          assert.equal(err.code, 'FORBIDDEN');
+          return true;
+        },
+      );
     });
 
     it('Return 404 when IDs nilai not found', async () => {
       mock.method(nilaiRepo, 'findById', async () => null);
       await assert.rejects(
-        () => nilaiService.deleteById('nonExist'),
+        () => nilaiService.deleteById('nonExist', { id: guruId, role: 'guru' }),
         (err) => {
           assert(err instanceof AppError);
           assert.equal(err.statusCode, 404);

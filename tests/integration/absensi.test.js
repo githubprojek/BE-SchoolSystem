@@ -9,6 +9,7 @@ const request = supertest(app);
 describe('Absensi API', { concurrency: false }, () => {
   let adminToken;
   let guruToken;
+  let guru2Token;
   let mapelId;
   let kelasId;
   let guruId;
@@ -47,6 +48,16 @@ describe('Absensi API', { concurrency: false }, () => {
     });
     guruToken = guruRes.body.data.token;
     guruId = guruRes.body.data.user.id;
+
+    const guru2Res = await request.post('/api/v1/register').send({
+      nama: 'Pak Lain',
+      email: 'guru2@test.com',
+      password: 'password123',
+      role: 'guru',
+      nip: 54321,
+      mataPelajaranId: mapelId,
+    });
+    guru2Token = guru2Res.body.data.token;
 
     const muridRes = await request.post('/api/v1/register').send({
       nama: 'Siti',
@@ -163,6 +174,24 @@ describe('Absensi API', { concurrency: false }, () => {
 
     assert.equal(res.status, 200);
     assert.equal(res.body.data.absensi.status, 'sakit');
+  });
+
+  it('PATCH /api/v1/absen/:id - 403 when another guru edits your record (security fix #2)', async () => {
+    const list = await request.get('/api/v1/absen').set('Authorization', `Bearer ${guruToken}`);
+    const absensiId = list.body.data.absensi[0].id;
+
+    const res = await request
+      .patch(`/api/v1/absen/${absensiId}`)
+      .set('Authorization', `Bearer ${guru2Token}`)
+      .send({ status: 'alpha' });
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.error.code, 'FORBIDDEN');
+
+    const check = await request
+      .get(`/api/v1/absen/${absensiId}`)
+      .set('Authorization', `Bearer ${guruToken}`);
+    assert.equal(check.body.data.absensi.status, 'sakit');
   });
 
   it('DELETE /api/v1/absen/:id - deletes attendance (admin)', async () => {

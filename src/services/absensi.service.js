@@ -2,6 +2,12 @@ import { absensiRepo } from '../repositories/absensi.repo.js';
 import { ErrorCodes } from '../errors/error-codes.js';
 import { AppError } from '../errors/AppError.js';
 
+function assertOwnerOrAdmin(ownerId, actor) {
+  if (!actor || (actor.role !== 'admin' && actor.id !== ownerId)) {
+    throw new AppError(403, ErrorCodes.FORBIDDEN, 'You are not allowed to modify this data');
+  }
+}
+
 export const absensiService = {
   async create(data) {
     const existing = await absensiRepo.findConflict(data.muridId, data.jadwalId, data.tanggal);
@@ -27,11 +33,12 @@ export const absensiService = {
     return result;
   },
 
-  async updateById(id, data) {
+  async updateById(id, data, actor) {
     const absensi = await absensiRepo.findById(id);
     if (!absensi) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, 'ID not found');
     }
+    assertOwnerOrAdmin(absensi.guruId, actor);
     if (data.muridId && data.jadwalId && data.tanggal) {
       const existing = await absensiRepo.findConflict(data.muridId, data.jadwalId, data.tanggal);
       if (existing && existing.id !== id) {
@@ -41,11 +48,12 @@ export const absensiService = {
     return await absensiRepo.updateById(id, data);
   },
 
-  async deleteById(id) {
+  async deleteById(id, actor) {
     const absensi = await absensiRepo.findById(id);
     if (!absensi) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, 'ID not found');
     }
+    assertOwnerOrAdmin(absensi.guruId, actor);
     return await absensiRepo.deleteById(id);
   },
 };

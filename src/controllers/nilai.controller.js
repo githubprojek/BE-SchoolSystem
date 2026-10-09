@@ -44,13 +44,13 @@ export const nilaiController = {
     if (!parse.success) {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid input', parse.error.flatten());
     }
-    const nilai = await nilaiService.updateById(req.params.id, parse.data);
+    const nilai = await nilaiService.updateById(req.params.id, parse.data, req.user);
 
     return sendSuccess(res, { nilai });
   },
 
   async deleteById(req, res) {
-    await nilaiService.deleteById(req.params.id);
+    await nilaiService.deleteById(req.params.id, req.user);
     return sendNoContent(res);
   },
 };

@@ -7,7 +7,9 @@ import { prisma } from '../../src/db/client.js';
 const request = supertest(app);
 
 describe('Nilai API', { concurrency: false }, () => {
+  let adminToken;
   let guruToken;
+  let guru2Token;
   let mapelId;
   let guruId;
   let muridId;
@@ -49,6 +51,24 @@ describe('Nilai API', { concurrency: false }, () => {
     });
     guruToken = guruRes.body.data.token;
     guruId = guruRes.body.data.user.id;
+
+    const adminRes = await request.post('/api/v1/register').send({
+      nama: 'Admin',
+      email: 'admin@test.com',
+      password: 'admin1234',
+      role: 'admin',
+    });
+    adminToken = adminRes.body.data.token;
+
+    const guru2Res = await request.post('/api/v1/register').send({
+      nama: 'Pak Lain',
+      email: 'guru2@test.com',
+      password: 'password123',
+      role: 'guru',
+      nip: 54321,
+      mataPelajaranId: mapelId,
+    });
+    guru2Token = guru2Res.body.data.token;
 
     const muridRes = await request.post('/api/v1/register').send({
       nama: 'Siti',
@@ -102,9 +122,7 @@ describe('Nilai API', { concurrency: false }, () => {
   });
 
   it('GET /api/v1/nilai - returns all grades', async () => {
-    const res = await request
-      .get('/api/v1/nilai')
-      .set('Authorization', `Bearer ${guruToken}`);
+    const res = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
 
     assert.equal(res.status, 200);
     assert.ok(Array.isArray(res.body.data.nilai));
@@ -112,9 +130,7 @@ describe('Nilai API', { concurrency: false }, () => {
   });
 
   it('GET /api/v1/nilai/:id - returns grade by id', async () => {
-    const list = await request
-      .get('/api/v1/nilai')
-      .set('Authorization', `Bearer ${guruToken}`);
+    const list = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
     const nilaiId = list.body.data.nilai[0].id;
 
     const res = await request
@@ -136,9 +152,7 @@ describe('Nilai API', { concurrency: false }, () => {
   });
 
   it('PATCH /api/v1/nilai/:id - updates grade (guru)', async () => {
-    const list = await request
-      .get('/api/v1/nilai')
-      .set('Authorization', `Bearer ${guruToken}`);
+    const list = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
     const nilaiId = list.body.data.nilai[0].id;
 
     const res = await request
@@ -150,10 +164,57 @@ describe('Nilai API', { concurrency: false }, () => {
     assert.equal(res.body.data.nilai.nilai, 95);
   });
 
-  it('DELETE /api/v1/nilai/:id - deletes grade (guru)', async () => {
-    const list = await request
-      .get('/api/v1/nilai')
+  it('PATCH /api/v1/nilai/:id - 403 when another guru edits your grade (security fix #2)', async () => {
+    const list = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
+    const nilaiId = list.body.data.nilai[0].id;
+
+    const res = await request
+      .patch(`/api/v1/nilai/${nilaiId}`)
+      .set('Authorization', `Bearer ${guru2Token}`)
+      .send({ nilai: 100 });
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.error.code, 'FORBIDDEN');
+
+    const check = await request
+      .get(`/api/v1/nilai/${nilaiId}`)
       .set('Authorization', `Bearer ${guruToken}`);
+    assert.equal(check.body.data.nilai.nilai, 95);
+  });
+
+  it('DELETE /api/v1/nilai/:id - 403 when another guru deletes your grade (security fix #2)', async () => {
+    const list = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
+    const nilaiId = list.body.data.nilai[0].id;
+
+    const res = await request
+      .delete(`/api/v1/nilai/${nilaiId}`)
+      .set('Authorization', `Bearer ${guru2Token}`);
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.error.code, 'FORBIDDEN');
+
+    const check = await request
+      .get(`/api/v1/nilai/${nilaiId}`)
+      .set('Authorization', `Bearer ${guruToken}`);
+    assert.equal(res.status, 403);
+    assert.equal(check.status, 200);
+  });
+
+  it('PATCH /api/v1/nilai/:id - admin can edit any grade (bypass)', async () => {
+    const list = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
+    const nilaiId = list.body.data.nilai[0].id;
+
+    const res = await request
+      .patch(`/api/v1/nilai/${nilaiId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ nilai: 97 });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.nilai.nilai, 97);
+  });
+
+  it('DELETE /api/v1/nilai/:id - deletes grade (guru)', async () => {
+    const list = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
     const nilaiId = list.body.data.nilai[0].id;
 
     const res = await request
@@ -245,7 +306,14 @@ describe('Nilai API', { concurrency: false }, () => {
   });
 
   it('GET /api/v1/nilai - invalid query returns 400', async () => {
-    for (const qs of ['page=0', 'limit=101', 'tipe=exam', 'semester=abc', 'sortBy=unknown', 'sortOrder=up']) {
+    for (const qs of [
+      'page=0',
+      'limit=101',
+      'tipe=exam',
+      'semester=abc',
+      'sortBy=unknown',
+      'sortOrder=up',
+    ]) {
       const res = await request
         .get(`/api/v1/nilai?${qs}`)
         .set('Authorization', `Bearer ${guruToken}`);

@@ -44,12 +44,12 @@ export const absensiController = {
     if (!parse.success) {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid input', parse.error.flatten());
     }
-    const absensi = await absensiService.updateById(req.params.id, parse.data);
+    const absensi = await absensiService.updateById(req.params.id, parse.data, req.user);
     return sendSuccess(res, { absensi });
   },
 
   async deleteById(req, res) {
-    await absensiService.deleteById(req.params.id);
+    await absensiService.deleteById(req.params.id, req.user);
     return sendNoContent(res);
   },
 };
