@@ -6,6 +6,7 @@ import { rateLimiter } from '../middlewares/rate-limit.js';
 import { errorHandler } from '../middlewares/error-handler.js';
 import { apiRoutes } from '../routes/index.js';
 import { logger } from '../logging/logger.js';
+import { config } from '../config/index.js';
 
 const app = express();
 app.set('json spaces', 2);
@@ -15,7 +16,13 @@ app.use((req, _res, next) => {
   next();
 });
 app.use(helmet());
-app.use(cors());
+
+const allowedOrigins = config.cors.origins;
+if (config.isProd && !allowedOrigins?.length) {
+  logger.warn('CORS_ORIGINS belum di-set - CORS terbuka untuk semua origin di production');
+}
+app.use(cors(allowedOrigins?.length ? { origin: allowedOrigins } : undefined));
+
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(rateLimiter);
