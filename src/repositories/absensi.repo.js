@@ -3,9 +3,9 @@ import { getOrSet, invalidateCache } from '../cache/helper.js';
 import { getVersion, bumpVersion } from '../cache/version.js';
 
 const include = {
-  guru: { omit: { password: true } },
-  murid: { omit: { password: true } },
-  jadwal: true,
+  guru: { select: { id: true, nama: true } },
+  murid: { select: { id: true, nama: true } },
+  jadwal: { select: { id: true, hari: true, jamMulai: true, jamSelesai: true } },
 };
 
 export const absensiRepo = {

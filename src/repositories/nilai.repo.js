@@ -4,18 +4,13 @@ import { prisma } from '../db/client.js';
 
 const include = {
   guru: {
-    omit: {
-      password: true,
-      createdAt: true,
-      updatedAt: true,
-      nis: true,
-      nip: true,
-      kelasId: true,
-      mataPelajaranId: true,
+    select: {
+      id: true,
+      nama: true,
     },
   },
-  murid: { omit: { password: true, createdAt: true, updatedAt: true, nip: true } },
-  mataPelajaran: true,
+  murid: { select: { id: true, nama: true } },
+  mataPelajaran: { select: { id: true, nama: true, kode: true } },
 };
 export const nilaiRepo = {
   async findAll({ page, limit, filter, sort }) {

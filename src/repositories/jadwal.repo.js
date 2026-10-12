@@ -4,19 +4,14 @@ import { getVersion, bumpVersion } from '../cache/version.js';
 
 const include = {
   guru: {
-    omit: {
-      password: true,
-      createdAt: true,
-      updatedAt: true,
-      nis: true,
-      nip: true,
-      kelasId: true,
-      mataPelajaranId: true,
+    select: {
+      id: true,
+      nama: true,
     },
   },
-  mataPelajaran: { omit: { createdAt: true, updatedAt: true } },
-  murid: { omit: { password: true, createdAt: true, updatedAt: true, nip: true } },
-  kelas: true,
+  mataPelajaran: { select: { id: true, kode: true, nama: true } },
+  murid: { select: { id: true, nama: true } },
+  kelas: { select: { id: true, nama: true, tingkat: true } },
 };
 
 export const jadwalRepo = {
