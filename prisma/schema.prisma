@@ -29,6 +29,8 @@ model User {
   absensiMurid  Absensi[] @relation("AbsensiMurid")
   refreshTokens RefreshToken[]
 
+  @@index([role, nama])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -77,6 +79,11 @@ model Jadwal {
   kelas         Kelas?   @relation(fields: [kelasId], references: [id])
   absensis      Absensi[]
 
+  @@index([jamMulai])               
+  @@index([hari, jamMulai])         
+  @@index([guruId])                 
+  @@index([kelasId, hari, jamMulai]) 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -95,6 +102,9 @@ model Nilai {
   guru          User  @relation("NilaiDiberikan", fields: [guruId], references: [id])
   mataPelajaran Mapel @relation(fields: [mataPelajaranId], references: [id])
 
+  @@index([tahunAjaran, semester, mataPelajaranId, tipe, nilai])  
+  @@index([nilai])                                                
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -111,7 +121,11 @@ model Absensi {
   murid  User   @relation("AbsensiMurid", fields: [muridId], references: [id])
   jadwal Jadwal @relation(fields: [jadwalId], references: [id])
 
-  @@unique([muridId, jadwalId, tanggal])
+  @@unique([muridId, jadwalId, tanggal])  
+  @@index([tanggal])                       
+  @@index([status, tanggal])      
+
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
