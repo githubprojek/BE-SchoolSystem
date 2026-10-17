@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import supertest from 'supertest';
 import { app } from '../../src/app/app.js';
 import { prisma } from '../../src/db/client.js';
+import { clearLoginFailures } from '../../src/middlewares/login-rate.js';
 
 const request = supertest(app);
 
@@ -201,7 +202,9 @@ describe('Users API', { concurrency: false }, () => {
       assert.equal(last.body.error.code, 'RATE_LIMITED');
     });
 
-    it('POST /api/v1/login - counter gagal direset saat login sukses (security fix #3)', async () => {
+    it('POST /api/v1/login - counter gagal direset saat login sukses', async () => {
+      await clearLoginFailures('127.0.0.1', 'guru@test.com');
+
       const login = (password) =>
         request.post('/api/v1/login').send({ email: 'guru@test.com', password });
 
