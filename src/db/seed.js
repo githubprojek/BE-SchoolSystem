@@ -3,7 +3,7 @@ import { logger } from '../logging/logger.js';
 import { redis } from '../cache/redis.js';
 import { bumpVersion } from '../cache/version.js';
 import { invalidateCache } from '../cache/helper.js';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 const DEFAULT_PASSWORD = 'password123';
 const ADMIN_PASSWORD = 'admin123';
@@ -12,8 +12,8 @@ const TAHUN_AJARAN = '2026/2027';
 async function seed() {
   logger.info('Seeding database...');
 
-  const password = await bcrypt.hash(DEFAULT_PASSWORD, 12);
-  const adminPassword = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  const password = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+  const adminPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@sekolah.com' },

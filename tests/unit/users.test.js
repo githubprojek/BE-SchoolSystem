@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { userRepo } from '../../src/repositories/users.repo.js';
 import { refreshTokenRepo } from '../../src/repositories/refresh-token.repo.js';

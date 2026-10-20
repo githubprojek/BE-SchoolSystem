@@ -7,7 +7,8 @@ import { ErrorCodes } from '../errors/error-codes.js';
 const memoryStore = new Map();
 
 function buildKey(ip, email) {
-  return `login:${ip}:${(email ?? '').toLowerCase()}`;
+  const cleanIp = (ip ?? '').replace(/^::ffff:/, '');
+  return `login:${cleanIp}:${(email ?? '').toLowerCase()}`;
 }
 
 function readMemory(key) {

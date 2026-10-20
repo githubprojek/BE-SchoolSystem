@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { userRepo } from '../repositories/users.repo.js';
 import { refreshTokenRepo } from '../repositories/refresh-token.repo.js';
@@ -7,7 +7,7 @@ import { AppError } from '../errors/AppError.js';
 import { ErrorCodes } from '../errors/error-codes.js';
 import { config } from '../config/index.js';
 
-const SALT_ROUNDS = 12;
+const SALT_ROUNDS = 10;
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
