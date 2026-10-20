@@ -16,6 +16,10 @@ describe('Absensi API', { concurrency: false }, () => {
   let guruId;
   let muridId;
   let jadwalId;
+  let muridToken;
+  let murid2Id;
+  let guruBedaMapelToken;
+  let guruWaliToken;
 
   before(async () => {
     await prisma.absensi.deleteMany();
@@ -64,6 +68,18 @@ describe('Absensi API', { concurrency: false }, () => {
       kelasId: kelasId,
     });
     muridId = murid.user.id;
+
+    muridToken = murid.token;
+
+    const murid2 = await registerAs(request, adminToken, {
+      nama: 'Andi',
+      email: 'murid2@test.com',
+      password: 'password123',
+      role: 'murid',
+      nis: 22222,
+      kelasId: kelasId,
+    });
+    murid2Id = murid2.user.id;
 
     const jadwalRes = await request
       .post('/api/v1/jadwal')
@@ -244,5 +260,47 @@ describe('Absensi API', { concurrency: false }, () => {
 
     assert.equal(res.status, 400);
     assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+  });
+
+  it('murid hanya melihat absensi miliknya sendiri', async () => {
+    await request.post('/api/v1/absen').set('Authorization', `Bearer ${guruToken}`).send({
+      muridId: murid2Id, // absensi murid kedua
+      jadwalId: jadwalId,
+      tanggal: '2026-07-24',
+      status: 'sakit',
+    });
+
+    const res = await request.get('/api/v1/absen').set('Authorization', `Bearer ${muridToken}`);
+
+    assert.equal(res.status, 200);
+    assert.ok(res.body.data.absensi.every((a) => a.muridId === muridId));
+    assert.ok(!res.body.data.absensi.some((a) => a.muridId === murid2Id));
+  });
+
+  it('murid tidak bisa baca absensi murid lain via /:id', async () => {
+    const semua = await request.get('/api/v1/absen').set('Authorization', `Bearer ${guruToken}`);
+    const absenMurid2 = semua.body.data.absensi.find((a) => a.muridId === murid2Id);
+
+    const res = await request
+      .get(`/api/v1/absen/${absenMurid2.id}`)
+      .set('Authorization', `Bearer ${muridToken}`);
+    assert.equal(res.status, 404);
+  });
+
+  it('guruId dipaksa dari token, bukan dari body', async () => {
+    const res = await request
+      .post('/api/v1/absen')
+      .set('Authorization', `Bearer ${guruToken}`)
+      .send({
+        guruId: '11111111-1111-1111-1111-111111111111', // dikarang
+        muridId: muridId,
+        jadwalId: jadwalId,
+        tanggal: '2026-07-25',
+        status: 'izin',
+      });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.data.guruId, guruId);
+    assert.notEqual(res.body.data.guruId, '11111111-1111-1111-1111-111111111111');
   });
 });

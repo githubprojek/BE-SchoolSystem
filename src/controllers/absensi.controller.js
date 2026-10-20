@@ -27,7 +27,7 @@ export const absensiController = {
     }
 
     const { page, limit } = parsed.data;
-    const { items, total } = await absensiService.findAll(parsed.data);
+    const { items, total } = await absensiService.findAll(parsed.data, req.user);
 
     return sendSuccess(res, {
       absensi: items,
@@ -35,7 +35,7 @@ export const absensiController = {
     });
   },
   async findById(req, res) {
-    const absensi = await absensiService.findById(req.params.id);
+    const absensi = await absensiService.findById(req.params.id, req.user);
     return sendSuccess(res, { absensi });
   },
 

@@ -7,6 +7,25 @@ function assertOwnerOrAdmin(ownerId, actor) {
     throw new AppError(403, ErrorCodes.FORBIDDEN, 'You are not allowed to modify this data');
   }
 }
+function buildAbsensiScope(actor) {
+  if (!actor) return { id: { in: [] } }; // default-deny
+  if (actor.role === 'admin') return {};
+  if (actor.role === 'murid') return { muridId: actor.id };
+  return { guruId: actor.id }; // guru → absensi yang dia catat sendiri
+}
+
+function assertCanReadAbsensi(absensi, actor) {
+  if (!actor) {
+    throw new AppError(401, ErrorCodes.UNAUTHORIZED, 'Not authenticated!');
+  }
+  if (actor.role === 'admin') return;
+  const allowed =
+    (actor.role === 'murid' && absensi.muridId === actor.id) ||
+    (actor.role === 'guru' && absensi.guruId === actor.id);
+  if (!allowed) {
+    throw new AppError(404, ErrorCodes.NOT_FOUND, 'ID not found');
+  }
+}
 
 export const absensiService = {
   async create(data) {
@@ -17,19 +36,22 @@ export const absensiService = {
     return await absensiRepo.create(data);
   },
 
-  async findAll({ page = 1, limit = 10, status, sortBy, sortOrder } = {}) {
+  async findAll(params = {}, actor) {
+    const { page = 1, limit = 10, status, sortBy, sortOrder } = params;
     const filter = status !== undefined ? { status } : undefined;
 
     const sort = sortBy !== undefined ? { sortBy, sortOrder: sortOrder ?? 'desc' } : undefined;
 
-    return await absensiRepo.findAll({ page, limit, filter, sort });
+    const scope = buildAbsensiScope(actor);
+    return await absensiRepo.findAll({ page, limit, filter, sort, scope, actorId: actor?.id });
   },
 
-  async findById(id) {
+  async findById(id, actor) {
     const result = await absensiRepo.findById(id);
     if (!result) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, 'ID not found');
     }
+    assertCanReadAbsensi(result, actor);
     return result;
   },
 

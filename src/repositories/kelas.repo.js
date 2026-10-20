@@ -56,6 +56,14 @@ export const kelasRepo = {
     return prisma.kelas.findFirst({ where: { nama, tingkat } });
   },
 
+  async findWaliKelasIds(guruId) {
+    const rows = await prisma.kelas.findMany({
+      where: { waliKelasId: guruId },
+      select: { id: true },
+    });
+    return rows.map((k) => k.id);
+  },
+
   async findById(id) {
     return await getOrSet(
       `kelas:${id}`,

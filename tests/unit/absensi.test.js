@@ -68,7 +68,7 @@ describe('Absensi test', { concurrency: false }, () => {
   describe('FindById', async () => {
     it('Find by id successfully', async () => {
       mock.method(absensiRepo, 'findById', async () => mockAbsensi);
-      const result = await absensiService.findById(mockAbsensi);
+      const result = await absensiService.findById(mockAbsensi, { id: 'admin-1', role: 'admin' });
       assert.equal(result._id, absensiId);
       assert.equal(result.guruId, guruId);
       assert.equal(result.muridId, muridId);

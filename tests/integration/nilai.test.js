@@ -14,6 +14,10 @@ describe('Nilai API', { concurrency: false }, () => {
   let mapelId;
   let guruId;
   let muridId;
+  let muridToken;
+  let murid2Id;
+  let guruBedaMapelToken;
+  let guruWaliToken;
 
   const createNilai = (data) =>
     request
@@ -75,6 +79,43 @@ describe('Nilai API', { concurrency: false }, () => {
       kelasId: kelasId,
     });
     muridId = murid.user.id;
+
+    muridToken = murid.token;
+
+    // murid kedua — bukti scoping antar murid
+    const murid2 = await registerAs(request, adminToken, {
+      nama: 'Andi',
+      email: 'murid2@test.com',
+      password: 'password123',
+      role: 'murid',
+      nis: 11111,
+      kelasId: kelasId,
+    });
+    murid2Id = murid2.user.id;
+
+    // guru dengan mapel berbeda — bukti guru lintas mapel ditolak
+    const mapelIpa = await prisma.mapel.create({ data: { nama: 'IPA', kode: 'IPA' } });
+    const guruBedaMapel = await registerAs(request, adminToken, {
+      nama: 'Bu IPA',
+      email: 'guru-ipa@test.com',
+      password: 'password123',
+      role: 'guru',
+      nip: 77777,
+      mataPelajaranId: mapelIpa.id,
+    });
+    guruBedaMapelToken = guruBedaMapel.token;
+
+    // guru beda mapel TAPI wali kelas — bukti jalur wali tetap bisa baca semua mapel
+    const guruWali = await registerAs(request, adminToken, {
+      nama: 'Bu Wali',
+      email: 'guru-wali@test.com',
+      password: 'password123',
+      role: 'guru',
+      nip: 88888,
+      mataPelajaranId: mapelIpa.id,
+    });
+    guruWaliToken = guruWali.token;
+    await prisma.kelas.update({ where: { id: kelasId }, data: { waliKelasId: guruWali.user.id } });
   });
 
   after(async () => {
@@ -317,5 +358,89 @@ describe('Nilai API', { concurrency: false }, () => {
       assert.equal(res.status, 400, qs);
       assert.equal(res.body.error.code, 'VALIDATION_ERROR', qs);
     }
+  });
+
+  it('murid hanya melihat nilai miliknya sendiri ', async () => {
+    await request.post('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`).send({
+      muridId: murid2Id,
+      mataPelajaranId: mapelId,
+      nilai: 60,
+      tipe: 'UTS',
+      semester: 1,
+      tahunAjaran: '2026/2027',
+    });
+
+    const res = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${muridToken}`);
+
+    assert.equal(res.body.data.nilai.length, 3); // 3 nilai milik Siti (dari test pagination)
+    assert.equal(res.body.data.meta.total, 3);
+    assert.ok(res.body.data.nilai.every((n) => n.muridId === muridId)); // bukan nilai murid lain
+    assert.ok(!res.body.data.nilai.some((n) => n.muridId === murid2Id)); // nilai Andi tidak bocor
+  });
+
+  it('murid tidak bisa baca nilai murid lain via /:id → 404 ', async () => {
+    const list = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
+    const nilaiMurid2 = list.body.data.nilai.find((n) => n.muridId === murid2Id);
+
+    const res = await request
+      .get(`/api/v1/nilai/${nilaiMurid2.id}`)
+      .set('Authorization', `Bearer ${muridToken}`);
+
+    assert.equal(res.status, 404);
+    assert.equal(res.body.error.code, 'NOT_FOUND');
+  });
+
+  it('guru beda mapel dan bukan wali tidak melihat apa pun ', async () => {
+    const list = await request
+      .get('/api/v1/nilai')
+      .set('Authorization', `Bearer ${guruBedaMapelToken}`);
+    assert.equal(list.status, 200);
+    assert.equal(list.body.data.nilai.length, 0);
+
+    const semua = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
+    const res = await request
+      .get(`/api/v1/nilai/${semua.body.data.nilai[0].id}`)
+      .set('Authorization', `Bearer ${guruBedaMapelToken}`);
+    assert.equal(res.status, 404);
+  });
+
+  it('guru beda mapel TAPI wali kelas tetap bisa baca semua nilai kelasnya ', async () => {
+    const res = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruWaliToken}`);
+
+    assert.equal(res.status, 200);
+    assert.ok(res.body.data.nilai.length >= 2); // nilai milik murid & murid2, lintas mapel
+  });
+
+  it('guruId dipaksa dari token, bukan dari body (VULN-003)', async () => {
+    const res = await request
+      .post('/api/v1/nilai')
+      .set('Authorization', `Bearer ${guruToken}`)
+      .send({
+        muridId: murid2Id,
+        guruId: '11111111-1111-1111-1111-111111111111', // dikarang
+        mataPelajaranId: mapelId,
+        nilai: 99,
+        tipe: 'tugas',
+        semester: 1,
+        tahunAjaran: '2026/2027',
+      });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.data.guruId, guruId); // tersimpan sebagai pembuat
+    assert.notEqual(res.body.data.guruId, '11111111-1111-1111-1111-111111111111');
+  });
+
+  it('guruId tidak bisa dipindahkan lewat PATCH (VULN-003)', async () => {
+    const list = await request.get('/api/v1/nilai').set('Authorization', `Bearer ${guruToken}`);
+    const nilaiId = list.body.data.nilai[0].id;
+
+    const res = await request
+      .patch(`/api/v1/nilai/${nilaiId}`)
+      .set('Authorization', `Bearer ${guruToken}`)
+      .send({ nilai: 77, guruId: '11111111-1111-1111-1111-111111111111' });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.nilai.guruId, guruId); // tetap pembuat asli
+    assert.equal(res.body.data.nilai.nilai, 77); // field lain tetap
   });
 });

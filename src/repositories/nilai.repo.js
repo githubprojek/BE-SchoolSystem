@@ -9,11 +9,11 @@ const include = {
       nama: true,
     },
   },
-  murid: { select: { id: true, nama: true } },
+  murid: { select: { id: true, nama: true, kelasId: true } },
   mataPelajaran: { select: { id: true, nama: true, kode: true } },
 };
 export const nilaiRepo = {
-  async findAll({ page, limit, filter, sort }) {
+  async findAll({ page, limit, filter, sort, scope, actorId = 'anon' }) {
     const version = await getVersion('nilai');
 
     const filterPart = filter
@@ -21,12 +21,12 @@ export const nilaiRepo = {
       : 'no-filter';
     const sortPart = sort?.sortBy ? `sortBy-${sort.sortBy}-sortOrder-${sort.sortOrder}` : 'no-sort';
 
-    const cacheKey = `nilai:v${version}:p${page}:l${limit}:${filterPart}:${sortPart}`;
+    const cacheKey = `nilai:v${version}:p${page}:l${limit}:${filterPart}:${sortPart}:u${actorId}`;
 
     return await getOrSet(
       cacheKey,
       async () => {
-        const where = {};
+        const where = { ...(scope ?? {}) };
         if (filter?.tipe) where.tipe = filter.tipe;
         if (filter?.mataPelajaranId) where.mataPelajaranId = filter.mataPelajaranId;
         if (filter?.tahunAjaran) where.tahunAjaran = filter.tahunAjaran;

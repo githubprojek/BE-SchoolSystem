@@ -26,7 +26,7 @@ export const nilaiController = {
     }
 
     const { page, limit } = parsed.data;
-    const { items, total } = await nilaiService.findAll(parsed.data);
+    const { items, total } = await nilaiService.findAll(parsed.data, req.user);
 
     return sendSuccess(res, {
       nilai: items,
@@ -35,7 +35,7 @@ export const nilaiController = {
   },
 
   async findById(req, res) {
-    const nilai = await nilaiService.findById(req.params.id);
+    const nilai = await nilaiService.findById(req.params.id, req.user);
     return sendSuccess(res, { nilai });
   },
 

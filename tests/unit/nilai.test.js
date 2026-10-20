@@ -104,7 +104,7 @@ describe('Nilai test', { concurrency: false }, () => {
   describe('findById', async () => {
     it('Find by id successfully', async () => {
       mock.method(nilaiRepo, 'findById', async () => mockNilai);
-      const result = await nilaiService.findById(nilaiId);
+      const result = await nilaiService.findById(nilaiId, { id: 'admin-1', role: 'admin' });
 
       assert.equal(result._id, nilaiId);
       assert.equal(result.nilai, 90);

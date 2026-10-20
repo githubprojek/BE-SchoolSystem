@@ -9,18 +9,18 @@ const include = {
 };
 
 export const absensiRepo = {
-  async findAll({ page, limit, filter, sort }) {
+  async findAll({ page, limit, filter, sort, scope, actorId = 'anon' }) {
     const version = await getVersion('absensi');
 
     const filterPart = filter?.status ? `status-${filter.status}` : 'no-filter';
     const sortPart = sort?.sortBy ? `sortBy-${sort.sortBy}-sortOrder-${sort.sortOrder}` : 'no-sort';
 
-    const cacheKey = `absensi:v${version}:p${page}:l${limit}:${filterPart}:${sortPart}`;
+    const cacheKey = `absensi:v${version}:p${page}:l${limit}:${filterPart}:${sortPart}:u${actorId}`;
 
     return await getOrSet(
       cacheKey,
       async () => {
-        const where = {};
+        const where = { ...(scope ?? {}) };
         if (filter?.status) where.status = filter.status;
 
         const orderBy = {};

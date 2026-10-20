@@ -30,6 +30,7 @@ model User {
   refreshTokens RefreshToken[]
 
   @@index([role, nama])
+  @@index([kelasId])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -46,6 +47,8 @@ model Kelas {
   jadwals   Jadwal[]
 
   @@unique([nama, tingkat])
+  @@index([waliKelasId])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -103,7 +106,9 @@ model Nilai {
   mataPelajaran Mapel @relation(fields: [mataPelajaranId], references: [id])
 
   @@index([tahunAjaran, semester, mataPelajaranId, tipe, nilai])  
-  @@index([nilai])                                                
+  @@index([nilai])                                 
+  @@index([muridId])
+  @@index([mataPelajaranId])               
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -124,6 +129,7 @@ model Absensi {
   @@unique([muridId, jadwalId, tanggal])  
   @@index([tanggal])                       
   @@index([status, tanggal])      
+  @@index([guruId])
 
   
   createdAt DateTime @default(now())
