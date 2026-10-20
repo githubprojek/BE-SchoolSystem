@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import supertest from 'supertest';
 import { app } from '../../src/app/app.js';
 import { prisma } from '../../src/db/client.js';
+import { bootstrapAdmin, registerAs } from '../helpers/auth.js';
 
 const request = supertest(app);
 
@@ -30,15 +31,10 @@ describe('Absensi API', { concurrency: false }, () => {
     const kelas = await prisma.kelas.create({ data: { nama: 'X-A', tingkat: 10 } });
     kelasId = kelas.id;
 
-    const adminRes = await request.post('/api/v1/register').send({
-      nama: 'Admin',
-      email: 'admin@test.com',
-      password: 'admin1234',
-      role: 'admin',
-    });
-    adminToken = adminRes.body.data.token;
+    const admin = await bootstrapAdmin(request);
+    adminToken = admin.token;
 
-    const guruRes = await request.post('/api/v1/register').send({
+    const guru = await registerAs(request, adminToken, {
       nama: 'Pak Budi',
       email: 'guru@test.com',
       password: 'password123',
@@ -46,10 +42,10 @@ describe('Absensi API', { concurrency: false }, () => {
       nip: 12345,
       mataPelajaranId: mapelId,
     });
-    guruToken = guruRes.body.data.token;
-    guruId = guruRes.body.data.user.id;
+    guruToken = guru.token;
+    guruId = guru.user.id;
 
-    const guru2Res = await request.post('/api/v1/register').send({
+    const guru2 = await registerAs(request, adminToken, {
       nama: 'Pak Lain',
       email: 'guru2@test.com',
       password: 'password123',
@@ -57,9 +53,9 @@ describe('Absensi API', { concurrency: false }, () => {
       nip: 54321,
       mataPelajaranId: mapelId,
     });
-    guru2Token = guru2Res.body.data.token;
+    guru2Token = guru2.token;
 
-    const muridRes = await request.post('/api/v1/register').send({
+    const murid = await registerAs(request, adminToken, {
       nama: 'Siti',
       email: 'murid@test.com',
       password: 'password123',
@@ -67,7 +63,7 @@ describe('Absensi API', { concurrency: false }, () => {
       nis: 67890,
       kelasId: kelasId,
     });
-    muridId = muridRes.body.data.user.id;
+    muridId = murid.user.id;
 
     const jadwalRes = await request
       .post('/api/v1/jadwal')

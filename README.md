@@ -271,7 +271,7 @@ Query tidak valid (`page=0`, `limit=101`, `sortBy` di luar enum, nilai enum sala
 
 | Method | Endpoint              | Role          | Keterangan                                     |
 | ------ | --------------------- | ------------- | ---------------------------------------------- |
-| POST   | `/api/v1/register`    | Public        | Registrasi user                                |
+| POST   | `/api/v1/register`    | Admin         | Registrasi user oleh admin                     |
 | POST   | `/api/v1/login`       | Public        | Login                                          |
 | POST   | `/api/v1/refresh`     | Public        | Tukar refresh token dengan pasangan token baru |
 | POST   | `/api/v1/logout`      | Public        | Cabut refresh token (logout)                   |

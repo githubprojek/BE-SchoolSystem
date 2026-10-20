@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import supertest from 'supertest';
 import { app } from '../../src/app/app.js';
 import { prisma } from '../../src/db/client.js';
+import { bootstrapAdmin, registerAs } from '../helpers/auth.js';
 
 const request = supertest(app);
 
@@ -29,7 +30,10 @@ describe('Jadwal API', { concurrency: false }, () => {
     const kelas = await prisma.kelas.create({ data: { nama: 'X-A', tingkat: 10 } });
     kelasId = kelas.id;
 
-    const guruRes = await request.post('/api/v1/register').send({
+    const admin = await bootstrapAdmin(request);
+    adminToken = admin.token;
+
+    const guru = await registerAs(request, adminToken, {
       nama: 'Budi',
       email: 'budi@test.com',
       password: 'password123',
@@ -37,10 +41,10 @@ describe('Jadwal API', { concurrency: false }, () => {
       nip: 12345,
       mataPelajaranId: mapelId,
     });
-    guruToken = guruRes.body.data.token;
-    guruId = guruRes.body.data.user.id;
+    guruToken = guru.token;
+    guruId = guru.user.id;
 
-    const muridRes = await request.post('/api/v1/register').send({
+    const murid = await registerAs(request, adminToken, {
       nama: 'Siti',
       email: 'siti@test.com',
       password: 'password123',
@@ -48,16 +52,8 @@ describe('Jadwal API', { concurrency: false }, () => {
       nis: 67890,
       kelasId: kelasId,
     });
-    muridToken = muridRes.body.data.token;
-    muridId = muridRes.body.data.user.id;
-
-    const adminRes = await request.post('/api/v1/register').send({
-      nama: 'Admin',
-      email: 'admin@test.com',
-      password: 'admin1234',
-      role: 'admin',
-    });
-    adminToken = adminRes.body.data.token;
+    muridToken = murid.token;
+    muridId = murid.user.id;
   });
 
   after(async () => {

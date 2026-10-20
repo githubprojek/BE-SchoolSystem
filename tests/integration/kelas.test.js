@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import supertest from 'supertest';
 import { app } from '../../src/app/app.js';
 import { prisma } from '../../src/db/client.js';
+import { bootstrapAdmin } from '../helpers/auth.js';
 
 const request = supertest(app);
 
@@ -17,13 +18,8 @@ describe('Kelas API', { concurrency: false }, () => {
     await prisma.kelas.deleteMany();
     await prisma.mapel.deleteMany();
 
-    const res = await request.post('/api/v1/register').send({
-      nama: 'Admin',
-      email: 'admin@test.com',
-      password: 'admin1234',
-      role: 'admin',
-    });
-    adminToken = res.body.data.token;
+    const admin = await bootstrapAdmin(request);
+    adminToken = admin.token;
   });
 
   after(async () => {
@@ -154,12 +150,11 @@ describe('Kelas API', { concurrency: false }, () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
-    assert.equal(res.body.data.kelas.length, 2); // 2 kelas tingkat 10
+    assert.equal(res.body.data.kelas.length, 2);
     assert.equal(res.body.data.meta.total, 2);
   });
 
   it('GET /api/v1/kelas?sortBy=nama&sortOrder=asc - sort ascending', async () => {
-    // Create 2 kelas dengan nama berbeda
     await request
       .post('/api/v1/kelas')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -175,7 +170,7 @@ describe('Kelas API', { concurrency: false }, () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
-    assert.equal(res.body.data.kelas[0].nama, 'X-A'); // A sebelum B
+    assert.equal(res.body.data.kelas[0].nama, 'X-A');
     assert.equal(res.body.data.kelas[1].nama, 'X-B');
     assert.equal(res.body.data.meta.total, 2);
   });
@@ -186,13 +181,12 @@ describe('Kelas API', { concurrency: false }, () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
-    // Urutan ter tinggi dulu
-    assert.equal(res.body.data.kelas[0].tingkat, 10); // misal ada kelas 12
+
+    assert.equal(res.body.data.kelas[0].tingkat, 10);
     assert.equal(res.body.data.meta.total, 2);
   });
 
   it('GET /api/v1/kelas?page=2&limit=1 - paginate to specific page', async () => {
-    // Asumsi udah ada 3 kelas (dari test create sebelumnya atau di-setiap test)
     const res = await request
       .get('/api/v1/kelas?page=2&limit=1')
       .set('Authorization', `Bearer ${adminToken}`);
@@ -201,7 +195,7 @@ describe('Kelas API', { concurrency: false }, () => {
     assert.equal(res.body.data.meta.page, 2);
     assert.equal(res.body.data.meta.limit, 1);
     assert.equal(res.body.data.kelas.length, 1);
-    // Kelas di halaman 2 harus berbeda halaman 1
+
     assert.notEqual(
       res.body.data.kelas[0].id,
       (

@@ -6,7 +6,7 @@ import { authorize } from '../../middlewares/authorize.js';
 
 const router = Router();
 
-router.post('/register', asyncHandler(usersController.register));
+router.post('/register', authenticate, authorize('admin'), asyncHandler(usersController.register));
 router.post('/login', asyncHandler(usersController.login));
 router.get('/me', authenticate, asyncHandler(usersController.getProfile));
 router.patch('/me', authenticate, asyncHandler(usersController.updateProfile));

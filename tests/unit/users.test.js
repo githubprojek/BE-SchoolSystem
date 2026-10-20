@@ -31,7 +31,6 @@ describe('User tests', { concurrency: false }, () => {
     mataPelajaranId: mapelId,
   };
 
-  // JWT tiruan berformat header.payload.signature supaya jwt.decode() tidak null
   function fakeJwt(payload) {
     const body = Buffer.from(
       JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + 900 }),
@@ -40,9 +39,8 @@ describe('User tests', { concurrency: false }, () => {
   }
 
   beforeEach(() => {
-    // sign di-call 2x (access + refresh) → hasilkan token tiruan yang tetap bisa di-decode
     mock.method(jwt, 'sign', (payload) => fakeJwt(payload));
-    // jangan sampai unit test menyentuh database
+
     mock.method(refreshTokenRepo, 'create', async () => ({ id: 'rt-1' }));
   });
 
@@ -447,7 +445,7 @@ describe('User tests', { concurrency: false }, () => {
       assert.notEqual(result.refreshToken, 'valid-refresh-token');
       assert.equal(jwt.decode(result.token).typ, 'access');
       assert.equal(jwt.decode(result.refreshToken).typ, 'refresh');
-      // rotasi: token lama di-revoke, sesi TIDAK dicabut semua
+
       assert.equal(refreshTokenRepo.revoke.mock.calls.length, 1);
       assert.equal(refreshTokenRepo.revokeAllForUser.mock.calls.length, 0);
       assert.equal(refreshTokenRepo.create.mock.calls.length, 1);
@@ -575,7 +573,7 @@ describe('User tests', { concurrency: false }, () => {
       await assert.doesNotReject(() => userService.logout('some-refresh-token'));
 
       assert.equal(refreshTokenRepo.revoke.mock.calls.length, 1);
-      assert.equal(refreshTokenRepo.revoke.mock.calls[0].arguments[0].length, 64); // sha256 hex
+      assert.equal(refreshTokenRepo.revoke.mock.calls[0].arguments[0].length, 64);
     });
 
     it('does nothing when token is empty', async () => {

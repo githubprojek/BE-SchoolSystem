@@ -4,6 +4,7 @@ import supertest from 'supertest';
 import { app } from '../../src/app/app.js';
 import { prisma } from '../../src/db/client.js';
 import { clearLoginFailures } from '../../src/middlewares/login-rate.js';
+import { bootstrapAdmin, registerAs } from '../helpers/auth.js';
 
 const request = supertest(app);
 
@@ -28,15 +29,10 @@ describe('Users API', { concurrency: false }, () => {
     const kelas = await prisma.kelas.create({ data: { nama: 'X-A', tingkat: 10 } });
     kelasId = kelas.id;
 
-    const adminRes = await request.post('/api/v1/register').send({
-      nama: 'Admin',
-      email: 'admin@test.com',
-      password: 'admin1234',
-      role: 'admin',
-    });
-    adminToken = adminRes.body.data.token;
+    const admin = await bootstrapAdmin(request);
+    adminToken = admin.token;
 
-    const guruRes = await request.post('/api/v1/register').send({
+    const guru = await registerAs(request, adminToken, {
       nama: 'Budi',
       email: 'guru@test.com',
       password: 'password123',
@@ -44,7 +40,7 @@ describe('Users API', { concurrency: false }, () => {
       nip: 999999,
       mataPelajaranId: mapelId,
     });
-    guruToken = guruRes.body.data.token;
+    guruToken = guru.token;
   });
 
   after(async () => {
@@ -52,15 +48,18 @@ describe('Users API', { concurrency: false }, () => {
   });
 
   describe('Register', () => {
-    it('POST /api/v1/register - creates a guru user', async () => {
-      const res = await request.post('/api/v1/register').send({
-        nama: 'Guru Baru',
-        email: 'guru2@test.com',
-        password: 'password123',
-        role: 'guru',
-        nip: 123454,
-        mataPelajaranId: mapelId,
-      });
+    it('POST /api/v1/register - creates a guru user (admin)', async () => {
+      const res = await request
+        .post('/api/v1/register')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          nama: 'Guru Baru',
+          email: 'guru2@test.com',
+          password: 'password123',
+          role: 'guru',
+          nip: 123454,
+          mataPelajaranId: mapelId,
+        });
 
       assert.equal(res.status, 201);
       assert.equal(res.body.success, true);
@@ -72,15 +71,18 @@ describe('Users API', { concurrency: false }, () => {
       assert.ok(res.body.data.refreshToken);
     });
 
-    it('POST /api/v1/register - creates a murid user', async () => {
-      const res = await request.post('/api/v1/register').send({
-        nama: 'Murid Baru',
-        email: 'murid@test.com',
-        password: 'password123',
-        role: 'murid',
-        nis: 67890,
-        kelasId: kelasId,
-      });
+    it('POST /api/v1/register - creates a murid user (admin)', async () => {
+      const res = await request
+        .post('/api/v1/register')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          nama: 'Murid Baru',
+          email: 'murid@test.com',
+          password: 'password123',
+          role: 'murid',
+          nis: 67890,
+          kelasId: kelasId,
+        });
 
       assert.equal(res.status, 201);
       assert.equal(res.body.data.user.nama, 'Murid Baru');
@@ -90,69 +92,114 @@ describe('Users API', { concurrency: false }, () => {
     });
 
     it('POST /api/v1/register - 409 duplicate email', async () => {
-      const res = await request.post('/api/v1/register').send({
-        nama: 'Duplikat',
-        email: 'guru@test.com',
-        password: 'password123',
-        role: 'guru',
-        nip: 11111,
-        mataPelajaranId: mapelId,
-      });
+      const res = await request
+        .post('/api/v1/register')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          nama: 'Duplikat',
+          email: 'guru@test.com',
+          password: 'password123',
+          role: 'guru',
+          nip: 11111,
+          mataPelajaranId: mapelId,
+        });
 
       assert.equal(res.status, 409);
       assert.equal(res.body.error.code, 'CONFLICT');
     });
 
     it('POST /api/v1/register - 400 guru without nip', async () => {
-      const res = await request.post('/api/v1/register').send({
-        nama: 'Guru Tanpa NIP',
-        email: 'guru3@test.com',
-        password: 'password123',
-        role: 'guru',
-        mataPelajaranId: mapelId,
-      });
+      const res = await request
+        .post('/api/v1/register')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          nama: 'Guru Tanpa NIP',
+          email: 'guru3@test.com',
+          password: 'password123',
+          role: 'guru',
+          mataPelajaranId: mapelId,
+        });
 
       assert.equal(res.status, 400);
       assert.equal(res.body.error.code, 'VALIDATION_ERROR');
     });
 
     it('POST /api/v1/register - 400 guru without mataPelajaran', async () => {
-      const res = await request.post('/api/v1/register').send({
-        nama: 'Guru Tanpa Mapel',
-        email: 'guru4@test.com',
-        password: 'password123',
-        role: 'guru',
-        nip: 22222,
-      });
+      const res = await request
+        .post('/api/v1/register')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          nama: 'Guru Tanpa Mapel',
+          email: 'guru4@test.com',
+          password: 'password123',
+          role: 'guru',
+          nip: 22222,
+        });
 
       assert.equal(res.status, 400);
       assert.equal(res.body.error.code, 'VALIDATION_ERROR');
     });
 
     it('POST /api/v1/register - 400 murid without nis', async () => {
-      const res = await request.post('/api/v1/register').send({
-        nama: 'Murid Tanpa NIS',
-        email: 'murid2@test.com',
-        password: 'password123',
-        role: 'murid',
-        kelasId: kelasId,
-      });
+      const res = await request
+        .post('/api/v1/register')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          nama: 'Murid Tanpa NIS',
+          email: 'murid2@test.com',
+          password: 'password123',
+          role: 'murid',
+          kelasId: kelasId,
+        });
 
       assert.equal(res.status, 400);
       assert.equal(res.body.error.code, 'VALIDATION_ERROR');
     });
 
     it('POST /api/v1/register - 400 murid without kelas', async () => {
-      const res = await request.post('/api/v1/register').send({
-        nama: 'Murid Tanpa Kelas',
-        email: 'murid3@test.com',
-        password: 'password123',
-        role: 'murid',
-        nis: 33333,
-      });
+      const res = await request
+        .post('/api/v1/register')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          nama: 'Murid Tanpa Kelas',
+          email: 'murid3@test.com',
+          password: 'password123',
+          role: 'murid',
+          nis: 33333,
+        });
 
       assert.equal(res.status, 400);
       assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('POST /api/v1/register - 401 without token (security fix VULN-001)', async () => {
+      const res = await request.post('/api/v1/register').send({
+        nama: 'Penyusup',
+        email: 'hacker@test.com',
+        password: 'password123',
+        role: 'admin',
+      });
+
+      assert.equal(res.status, 401);
+      assert.equal(res.body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/v1/register - 403 saat dipanggil bukan admin (security fix VULN-001)', async () => {
+      const res = await request
+        .post('/api/v1/register')
+        .set('Authorization', `Bearer ${guruToken}`)
+        .send({
+          nama: 'Penyusup',
+          email: 'hacker@test.com',
+          password: 'password123',
+          role: 'admin',
+        });
+
+      assert.equal(res.status, 403);
+      assert.equal(res.body.error.code, 'FORBIDDEN');
+
+      const existing = await prisma.user.findUnique({ where: { email: 'hacker@test.com' } });
+      assert.equal(existing, null);
     });
   });
 

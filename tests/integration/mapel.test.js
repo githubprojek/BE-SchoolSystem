@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import supertest from 'supertest';
 import { app } from '../../src/app/app.js';
 import { prisma } from '../../src/db/client.js';
+import { bootstrapAdmin } from '../helpers/auth.js';
 
 const request = supertest(app);
 
@@ -17,13 +18,8 @@ describe('Mapel API', { concurrency: false }, () => {
     await prisma.kelas.deleteMany();
     await prisma.mapel.deleteMany();
 
-    const res = await request.post('/api/v1/register').send({
-      nama: 'Admin',
-      email: 'admin@test.com',
-      password: 'admin1234',
-      role: 'admin',
-    });
-    adminToken = res.body.data.token;
+    const admin = await bootstrapAdmin(request);
+    adminToken = admin.token;
   });
 
   after(async () => {
@@ -59,9 +55,7 @@ describe('Mapel API', { concurrency: false }, () => {
   });
 
   it('GET /api/v1/mapel - returns all mapel', async () => {
-    const res = await request
-      .get('/api/v1/mapel')
-      .set('Authorization', `Bearer ${adminToken}`);
+    const res = await request.get('/api/v1/mapel').set('Authorization', `Bearer ${adminToken}`);
 
     assert.equal(res.status, 200);
     assert.ok(Array.isArray(res.body.data.mapel));
@@ -69,9 +63,7 @@ describe('Mapel API', { concurrency: false }, () => {
   });
 
   it('GET /api/v1/mapel/:id - returns mapel by id', async () => {
-    const list = await request
-      .get('/api/v1/mapel')
-      .set('Authorization', `Bearer ${adminToken}`);
+    const list = await request.get('/api/v1/mapel').set('Authorization', `Bearer ${adminToken}`);
     const mapelId = list.body.data.mapel[0].id;
 
     const res = await request
@@ -93,9 +85,7 @@ describe('Mapel API', { concurrency: false }, () => {
   });
 
   it('PATCH /api/v1/mapel/:id - updates mapel (admin)', async () => {
-    const list = await request
-      .get('/api/v1/mapel')
-      .set('Authorization', `Bearer ${adminToken}`);
+    const list = await request.get('/api/v1/mapel').set('Authorization', `Bearer ${adminToken}`);
     const mapelId = list.body.data.mapel[0].id;
 
     const res = await request
@@ -108,9 +98,7 @@ describe('Mapel API', { concurrency: false }, () => {
   });
 
   it('DELETE /api/v1/mapel/:id - deletes mapel (admin)', async () => {
-    const list = await request
-      .get('/api/v1/mapel')
-      .set('Authorization', `Bearer ${adminToken}`);
+    const list = await request.get('/api/v1/mapel').set('Authorization', `Bearer ${adminToken}`);
     const mapelId = list.body.data.mapel[0].id;
 
     const res = await request
