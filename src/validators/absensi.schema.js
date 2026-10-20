@@ -3,7 +3,6 @@ import { z } from 'zod';
 const statusEnum = z.enum(['hadir', 'sakit', 'alpha', 'izin']);
 
 export const createSchema = z.object({
-  guruId: z.string(),
   muridId: z.string(),
   jadwalId: z.string(),
   tanggal: z.coerce.date(),

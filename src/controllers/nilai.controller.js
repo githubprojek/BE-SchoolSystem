@@ -10,7 +10,7 @@ export const nilaiController = {
     if (!parse.success) {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid input', parse.error.flatten());
     }
-    const nilai = await nilaiService.create(parse.data);
+    const nilai = await nilaiService.create({ ...parse.data, guruId: req.user.id });
     return sendCreated(res, nilai);
   },
 

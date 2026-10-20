@@ -11,7 +11,7 @@ export const absensiController = {
     if (!parse.success) {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid input', parse.error.flatten());
     }
-    const absensi = await absensiService.create(parse.data);
+    const absensi = await absensiService.create({ ...parse.data, guruId: req.user.id });
     return sendCreated(res, absensi);
   },
 

@@ -4,7 +4,6 @@ const tipeEnum = z.enum(['tugas', 'UTS', 'UAS', 'praktik']);
 
 export const createSchema = z.object({
   muridId: z.string(),
-  guruId: z.string(),
   mataPelajaranId: z.string(),
   nilai: z.number(),
   tipe: tipeEnum,
