@@ -12,6 +12,9 @@ export function authenticate(req, _res, next) {
   const token = header.split(' ')[1];
   try {
     const payload = jwt.verify(token, config.jwt.secret);
+    if (payload.typ !== 'access') {
+      return next(new AppError(401, ErrorCodes.UNAUTHORIZED, 'Invalid or expired token'));
+    }
     req.user = { id: payload.sub, role: payload.role, kelasId: payload.kelasId };
     next();
   } catch {

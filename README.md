@@ -53,14 +53,17 @@ Lalu isi variabel berikut di `.env`:
 | Variabel                 | Keterangan                                                                    | Contoh                                               |
 | ------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `DATABASE_URL`           | URL koneksi PostgreSQL                                                        | `postgresql://user:pass@localhost:5432/schoolsystem` |
-| `JWT_SECRET`             | Secret untuk **access token**                                                 | `secret-key-anda`                                    |
+| `JWT_SECRET`             | Secret untuk **access token**                                                 | `openssl rand -hex 32`                                    |
 | `JWT_EXPIRES_IN`         | Masa berlaku access token                                                     | `15m`                                                |
 | `JWT_REFRESH_SECRET`     | Secret **terpisah** untuk refresh token (wajib, app gagal start kalau kosong) | `openssl rand -hex 32`                               |
 | `JWT_REFRESH_EXPIRES_IN` | Masa berlaku refresh token                                                    | `7d`                                                 |
 | `REDIS_URL`              | URL koneksi Redis (opsional — **dev & test wajib beda instance**)             | `redis://localhost:6379`                             |
 | `PORT`                   | Port server                                                                   | `3000`                                               |
+| `SEED_ADMIN_PASSWORD`    | Password admin untuk `db:seed` — opsional di dev (fallback `admin123`), **wajib di production** | *(isi sendiri)* |
+| `SEED_USER_PASSWORD`     | Password guru/murid untuk `db:seed` — opsional di dev (fallback `password123`), **wajib di production** | *(isi sendiri)* |
+| `SEED_ALLOW_PRODUCTION`  | Set `true` untuk **mengizinkan** seed jalan di production (default: seed menolak) | `true` (hanya bila dibutuhkan) |
 
-> Generate secret acak: `openssl rand -hex 32`. **Jangan pakai `JWT_SECRET` yang sama** untuk refresh token.
+> Generate secret acak: `openssl rand -hex 32`. **`JWT_SECRET` dan `JWT_REFRESH_SECRET` harus berbeda** — aplikasi **gagal start** kalau keduanya sama atau masih memakai nilai placeholder dari `.env.example`.
 
 Untuk menjalankan test, buat juga `.env.test` lalu sesuaikan isinya:
 
@@ -99,6 +102,11 @@ Opsional: isi data awal (seed):
 ```bash
 npm run db:seed
 ```
+
+> **Aturan seed (keamanan):**
+>
+> - **Development**: password jatuh ke fallback `admin123` (admin) dan `password123` (guru/murid) jika `SEED_ADMIN_PASSWORD` / `SEED_USER_PASSWORD` tidak diisi.
+> - **Production**: seed **menolak jalan** (`exit 1`) kecuali kedua password diisi lewat env **dan** `SEED_ALLOW_PRODUCTION=true` di-set eksplisit — tidak ada kredensial default yang bisa muncul di production.
 
 ## Menjalankan Aplikasi
 
@@ -174,10 +182,10 @@ BE-SchoolSystem/
 
 ### 1. Autentikasi & Otorisasi
 
-- Registrasi pengguna dengan role (`admin`, `guru`, `murid`)
+- Registrasi pengguna **khusus admin** (`POST /register` → `401` tanpa token, `403` untuk non-admin) dengan role (`admin`, `guru`, `murid`)
 - Login dengan JWT → menghasilkan **access token** + **refresh token**
 - **Refresh token** dengan rotasi sekali pakai, deteksi pemakaian ulang (reuse), & logout yang mencabut sesi
-- Middleware `authenticate` untuk verifikasi token
+- Middleware `authenticate` untuk verifikasi token — hanya menerima token bertipe `access`
 - Middleware `authorize` untuk pembatasan akses per role
 
 ### 2. Manajemen User
@@ -216,6 +224,15 @@ BE-SchoolSystem/
 - Hasil query (list data) di-cache di Redis untuk mempercepat response
 - Cache otomatis di-invalidate saat data berubah (cache key berversi per resource)
 - Cache dev & test memakai Redis instance yang terpisah
+
+### 8. Kontrol Keamanan
+
+- **Register khusus admin** — `POST /api/v1/register` ditolak untuk selain admin (`401` tanpa token, `403` untuk guru/murid)
+- **Pembacaan data berbasis peran (row-level scoping)** — `GET /nilai` & `GET /absen` hanya mengembalikan data yang berhak dilihat: murid (milik sendiri), guru (absensi yang dia catat; nilai untuk mapel yang diajar atau seluruh mapel di kelas walinya), admin (semua). Akses detail di luar scope menghasilkan `404` — bukan `403` — agar ID tidak bisa dienumerasi
+- **`guruId` dipaksa dari token JWT** — nilai/absensi selalu melekat pada pembuat aslinya; `guruId` diabaikan saat create dan tidak bisa diubah lewat PATCH
+- **Kunci cache per-pengguna** — hasil scoping di-cache dengan suffix id aktor sehingga tidak bocor antar pengguna
+- **Seed aman untuk production** — lihat [Setup Database](#setup-database)
+- **Validasi secret JWT saat start** — aplikasi menolak start kalau `JWT_SECRET` = `JWT_REFRESH_SECRET` atau masih memakai placeholder `.env.example`; `authenticate` juga menolak token tanpa tipe `access` sehingga refresh token tidak bisa dipakai sebagai access token
 
 ## Pagination, Filtering & Sorting
 
@@ -309,3 +326,17 @@ Query tidak valid (`page=0`, `limit=101`, `sortBy` di luar enum, nilai enum sala
 | DELETE | `/api/v1/nilai/:id`   | Admin/Guru    | Hapus nilai                                    |
 
 > Endpoint **daftar** mendukung pagination, filtering, dan sorting — lihat [Pagination, Filtering & Sorting](#pagination-filtering--sorting).
+
+## Alur Refresh Token
+
+1. `POST /api/v1/login` mengembalikan **access token** (tipe `access`, masa berlaku `JWT_EXPIRES_IN`) dan **refresh token** (tipe `refresh`, masa berlaku `JWT_REFRESH_EXPIRES_IN`, tercatat di database dalam bentuk hash).
+2. Ketika access token habis, tukarkan refresh token di `POST /api/v1/refresh` → mendapat pasangan token baru; refresh token lama **dirotasi** (sekali pakai, tidak bisa dipakai dua kali).
+3. **Deteksi pemakaian ulang**: kalau refresh token yang sudah dirotasi dipakai lagi, server menganggap token itu bocor dan **mencabut seluruh sesi user** (`401 Refresh token reuse detected`).
+4. `POST /api/v1/logout` mencabut refresh token yang masih aktif.
+5. Sisi server hanya menerima refresh token di `POST /refresh` (dicek klaim `typ: 'refresh'` + hash di database) dan access token bertipe `typ: 'access'` di endpoint bermiddleware `authenticate` — keduanya tidak bisa dipakai silang.
+
+## Kontribusi
+
+1. Fork repository dan buat branch fitur: `git checkout -b fitur/nama-fitur`
+2. Pastikan `npm run lint` bersih dan seluruh test hijau: `npm run test:unit && npm run test:int`
+3. Buka Pull Request dengan deskripsi perubahan yang jelas
