@@ -5,9 +5,24 @@ import { bumpVersion } from '../cache/version.js';
 import { invalidateCache } from '../cache/helper.js';
 import bcrypt from 'bcrypt';
 
-const DEFAULT_PASSWORD = 'password123';
-const ADMIN_PASSWORD = 'admin123';
 const TAHUN_AJARAN = '2026/2027';
+
+const isProd = process.env.NODE_ENV === 'production';
+
+if (isProd && process.env.SEED_ALLOW_PRODUCTION !== 'true') {
+  console.error(
+    'Seed refuses to run in production. Set SEED_ALLOW_PRODUCTION=true only if you are sure.',
+  );
+  process.exit(1);
+}
+
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || (isProd ? null : 'admin123');
+const DEFAULT_PASSWORD = process.env.SEED_USER_PASSWORD || (isProd ? null : 'password123');
+
+if (!ADMIN_PASSWORD || !DEFAULT_PASSWORD) {
+  console.error('SEED_ADMIN_PASSWORD dan SEED_USER_PASSWORD wajib diisi saat NODE_ENV=production');
+  process.exit(1);
+}
 
 async function seed() {
   logger.info('Seeding database...');
