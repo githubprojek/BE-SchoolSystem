@@ -33,6 +33,13 @@ export const config = Object.freeze({
           .filter(Boolean)
       : null,
   },
+  trustProxy: env.TRUST_PROXY
+    ? /^\d+$/.test(env.TRUST_PROXY)
+      ? Number(env.TRUST_PROXY)
+      : env.TRUST_PROXY.split(',')
+          .map((v) => v.trim())
+          .filter(Boolean)
+    : false,
   redis: {
     url: env.REDIS_URL,
   },

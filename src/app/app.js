@@ -10,16 +10,17 @@ import { config } from '../config/index.js';
 
 const app = express();
 app.set('json spaces', 2);
+app.set('trust proxy', config.trustProxy);
 app.use(requestId);
 app.use((req, _res, next) => {
   logger.info({ req: { id: req.id, method: req.method, url: req.url } }, 'Request started');
   next();
 });
 app.use(helmet());
-
 const allowedOrigins = config.cors.origins;
 if (config.isProd && !allowedOrigins?.length) {
-  logger.warn('CORS_ORIGINS belum di-set - CORS terbuka untuk semua origin di production');
+  logger.error('CORS_ORIGINS wajib di-set di production');
+  process.exit(1);
 }
 app.use(cors(allowedOrigins?.length ? { origin: allowedOrigins } : undefined));
 

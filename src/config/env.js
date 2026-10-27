@@ -18,6 +18,7 @@ const envSchema = z
     LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
     REDIS_URL: z.string().optional(),
     CORS_ORIGINS: z.string().optional(),
+    TRUST_PROXY: z.string().optional(),
   })
   .refine((e) => e.JWT_SECRET !== e.JWT_REFRESH_SECRET, {
     message: 'JWT_SECRET dan JWT_REFRESH_SECRET must be different',
